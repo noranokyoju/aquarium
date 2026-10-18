@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="RelicData" format=3]
+
+[ext_resource type="Script" path="res://scripts/relic_data.gd" id="1_eijjt"]
+
+[resource]
+script = ExtResource("1_eijjt")
+id = "R31"
+display_name = "ふたつの流れ星"
+rarity = 2
+values = Dictionary[String, float]({
+"dice": 1.0
+})
+description = "サイコロを追加で$dice$個振る。$dice+1$個の目の合計を使う"

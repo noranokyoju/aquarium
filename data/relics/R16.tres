@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="RelicData" format=3 uid="uid://mbmiw8vb028t"]
+
+[ext_resource type="Script" uid="uid://b4srh60a5xyui" path="res://scripts/relic_data.gd" id="1_tvuxs"]
+
+[resource]
+script = ExtResource("1_tvuxs")
+id = "R16"
+display_name = "ここでひと休み"
+rarity = 1
+description = "予想ポーズを訪問すると残り歩数にかかわらず全移動を終了し、的中扱い"
+note = "開始地に立っているだけでは停止しない"

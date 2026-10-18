@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="RelicData" format=3 uid="uid://bt0iimv1vamba"]
+
+[ext_resource type="Script" uid="uid://b4srh60a5xyui" path="res://scripts/relic_data.gd" id="1_cwlaf"]
+
+[resource]
+script = ExtResource("1_cwlaf")
+id = "R30"
+display_name = "渡りの星図"
+rarity = 1
+description = "前サイクルの跨ぎ回数だけマーク数を増やす"

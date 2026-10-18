@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="RelicData" format=3 uid="uid://bi8hmyh3hnimt"]
+
+[ext_resource type="Script" uid="uid://b4srh60a5xyui" path="res://scripts/relic_data.gd" id="1_6avct"]
+
+[resource]
+script = ExtResource("1_6avct")
+id = "R34"
+display_name = "潮の余韻"
+rarity = 2
+description = "通常移動の残り歩数が0になった際、そこまでの跨ぎ回数分を1回だけ追加移動。予想地点へ到着した時点で追加移動を終了"

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="RelicData" format=3 uid="uid://7q3ss52mrtdb"]
+
+[ext_resource type="Script" uid="uid://b4srh60a5xyui" path="res://scripts/relic_data.gd" id="1_vkmea"]
+
+[resource]
+script = ExtResource("1_vkmea")
+id = "R06"
+display_name = "ゆっくりのひれ"
+values = Dictionary[String, float]({
+"cross_weight": 1.0,
+"steps": 1.0
+})
+description = "毎サイクル通常歩数-$steps$。全跨ぎリンクの重みを$cross_weight$にする"

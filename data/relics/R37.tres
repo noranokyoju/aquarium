@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="RelicData" format=3 uid="uid://cghfl86mrbiqa"]
+
+[ext_resource type="Script" uid="uid://b4srh60a5xyui" path="res://scripts/relic_data.gd" id="1_vx0bq"]
+
+[resource]
+script = ExtResource("1_vx0bq")
+id = "R37"
+display_name = "連勝の王冠"
+rarity = 2
+values = Dictionary[String, float]({
+"cap": 10.0,
+"hit_mult": 2.0,
+"streak": 2.0
+})
+description = "的中倍率+$hit_mult:1$。連続的中ごとにさらに+$streak:1$、加算上限+$cap:1$"
+note = "予想を外すと報酬0"

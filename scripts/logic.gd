@@ -14,6 +14,16 @@ static func has(relics: Array, id: String) -> bool:
 	return relics.has(id)
 
 
+## レリックの効果量（res://data/relics/*.tres の values）
+static func val(id: String, key: String) -> float:
+	return D.relic_value(id, key)
+
+
+## 訪問倍率などの加算値を 1/100 単位の整数にする
+static func val100(id: String, key: String) -> int:
+	return roundi(val(id, key) * 100.0)
+
+
 static func area_sums(bases: Array) -> Array:
 	var sums := [0.0, 0.0]
 	for p in D.POSE_COUNT:
@@ -23,26 +33,26 @@ static func area_sums(bases: Array) -> Array:
 
 ## 強制跨ぎの歩か（歩番号は追加移動も含めた通し番号、1始まり）
 static func is_forced_step(step: int, relics: Array) -> bool:
-	return (has(relics, "R04") and step == 1) or (has(relics, "R18") and step % 3 == 0)
+	return (has(relics, "R04") and step == 1) or (has(relics, "R18") and step % int(val("R18", "interval")) == 0)
 
 
 ## 第4.3節 1〜4 を適用したリンク一覧（重み0の無効リンクも含む）
 static func base_links(node: int, relics: Array, bases: Array) -> Array:
 	var cross_w := 2
 	if has(relics, "R06"):
-		cross_w = 1
+		cross_w = int(val("R06", "cross_weight"))
 	if has(relics, "R17"):
 		var sums := area_sums(bases)
 		var a := D.area_of(node)
 		if sums[a] < sums[1 - a]:
-			cross_w = 8
+			cross_w = int(val("R17", "cross_weight"))
 	var links := [
 		{"to": D.cw_of(node), "w": 6, "kind": KIND_CW},
 		{"to": D.ccw_of(node), "w": 0 if has(relics, "R01") else 2, "kind": KIND_CCW},
 		{"to": D.cross_of(node), "w": cross_w, "kind": KIND_CROSS},
 	]
 	if has(relics, "R02"):
-		links.append({"to": node, "w": 6, "kind": KIND_SELF})
+		links.append({"to": node, "w": int(val("R02", "weight")), "kind": KIND_SELF})
 	return links
 
 
@@ -87,14 +97,9 @@ static func end_distribution(s: int, n0: int, relics: Array, bases: Array) -> Ar
 
 static func mark_count(relics: Array, kprev: int) -> int:
 	var m := 0
-	if has(relics, "R08"): m += 1
-	if has(relics, "R15"): m += 2
-	if has(relics, "R35"): m += 1
-	if has(relics, "R21"): m += 1
-	if has(relics, "R29"): m += 1
+	for id in ["R08", "R15", "R35", "R21", "R29", "R36", "R38"]:
+		if has(relics, id): m += int(val(id, "marks"))
 	if has(relics, "R30"): m += kprev
-	if has(relics, "R36"): m += 1
-	if has(relics, "R38"): m += 2
 	return mini(10, m)
 
 
@@ -135,12 +140,12 @@ static func dice_sum(dice: Array) -> int:
 static func calc_n0(cyc: Dictionary, b: int) -> int:
 	var relics: Array = cyc["relics"]
 	var raw := dice_sum(cyc["dice"]) + b
-	if has(relics, "R05"): raw += 1
-	if has(relics, "R06"): raw -= 1
+	if has(relics, "R05"): raw += int(val("R05", "steps"))
+	if has(relics, "R06"): raw -= int(val("R06", "steps"))
 	if has(relics, "R35"): raw += int(cyc["Mprev"])
 	var n0 := maxi(0, raw)
 	if has(relics, "R39"):
-		n0 = mini(3, n0)
+		n0 = mini(int(val("R39", "max_steps")), n0)
 	return n0
 
 
@@ -162,7 +167,7 @@ static func generate_route(cyc: Dictionary, rng: RandomNumberGenerator) -> Dicti
 	var s: int = cyc["s"]
 	var q: int = cyc["q"]
 	var n0: int = cyc["n0"]
-	var cap := 3 if has(relics, "R39") else 1 << 30
+	var cap := int(val("R39", "max_steps")) if has(relics, "R39") else 1 << 30
 	var w := {"steps": [], "cur": s, "t": 0}
 	var stop := ""
 	var kbase := 0
@@ -214,7 +219,7 @@ static func _route_step(w: Dictionary, is_extra: bool, relics: Array, bases: Arr
 	var cross := D.area_of(cur) != D.area_of(to)
 	var r09 := false
 	if cross and has(relics, "R09"):
-		r09 = rng.randf() < 0.5
+		r09 = rng.randf() < val("R09", "chance") / 100.0
 	w["steps"].append({"from": cur, "to": to, "cross": cross, "extra": is_extra, "r09": r09,
 		"forced": o.get("forced", false)})
 	w["cur"] = to
@@ -240,13 +245,13 @@ static func base_hit(cyc: Dictionary, e: int) -> bool:
 	return has(cyc["relics"], "R36") and (cyc["marks"] as Array).has(e)
 
 
-static func hit_multiplier(relics: Array, h: int, hit: bool) -> int:
+static func hit_multiplier(relics: Array, h: int, hit: bool) -> float:
 	if hit:
-		var m := 2
-		if has(relics, "R11"): m += 2
-		if has(relics, "R37"): m += mini(2 * (h + 1), 10)
+		var m := 2.0
+		if has(relics, "R11"): m += val("R11", "hit_mult")
+		if has(relics, "R37"): m += minf(val("R37", "hit_mult") + val("R37", "streak") * h, val("R37", "cap"))
 		return m
-	return 0 if has(relics, "R37") else 1
+	return 0.0 if has(relics, "R37") else 1.0
 
 
 ## 精算内容の計算（第8節）。状態は変更しない。
@@ -290,36 +295,36 @@ static func compute_settlement(cyc: Dictionary, route: Dictionary, hit: bool) ->
 		var parts := []
 		if mark:
 			if has(relics, "R38"):
-				j100 += 300
-				parts.append("マーク+3.0")
+				j100 += val100("R38", "mark_bonus")
+				parts.append("マーク+%s" % fmt_num(val("R38", "mark_bonus")))
 			else:
 				j100 += 50
 				parts.append("マーク+0.5")
 		if has(relics, "R12") and area == D.AREA_YUTTARI:
-			j100 += 40
-			parts.append("R12+0.4")
+			j100 += val100("R12", "bonus")
+			parts.append("R12+%s" % fmt_num(val("R12", "bonus")))
 		if has(relics, "R13") and area == D.AREA_HASHAGI:
-			j100 += 40
-			parts.append("R13+0.4")
+			j100 += val100("R13", "bonus")
+			parts.append("R13+%s" % fmt_num(val("R13", "bonus")))
 		if has(relics, "R14") and cross:
-			j100 += 75
-			parts.append("R14+0.75")
+			j100 += val100("R14", "bonus")
+			parts.append("R14+%s" % fmt_num(val("R14", "bonus")))
 		if has(relics, "R25") and nt >= 2:
-			j100 += 100
-			parts.append("R25+1.0")
+			j100 += val100("R25", "bonus")
+			parts.append("R25+%s" % fmt_num(val("R25", "bonus")))
 		if has(relics, "R26"):
-			j100 += 25 * dt
-			parts.append("R26+%s" % fmt_num(0.25 * dt))
+			j100 += val100("R26", "bonus") * dt
+			parts.append("R26+%s" % fmt_num(val("R26", "bonus") * dt))
 		if has(relics, "R27") and stay:
-			j100 += 75
-			parts.append("R27+0.75")
+			j100 += val100("R27", "bonus")
+			parts.append("R27+%s" % fmt_num(val("R27", "bonus")))
 		if has(relics, "R28") and k >= 1 and area == D.AREA_HASHAGI:
-			j100 += 150
-			parts.append("R28+1.5")
+			j100 += val100("R28", "bonus")
+			parts.append("R28+%s" % fmt_num(val("R28", "bonus")))
 		var zero := []
 		if has(relics, "R38") and not mark:
 			zero.append("R38:未マーク")
-		if has(relics, "R40") and t <= 3:
+		if has(relics, "R40") and t <= int(val("R40", "zero_steps")):
 			zero.append("R40:%d歩目" % t)
 		var v100 := 0.0
 		if zero.is_empty():
@@ -329,9 +334,9 @@ static func compute_settlement(cyc: Dictionary, route: Dictionary, hit: bool) ->
 			"zero": ", ".join(zero), "parts": ", ".join(parts), "cross": cross, "mark": mark,
 			"extra": st["extra"]})
 
-	var g := 1
-	if has(relics, "R39"): g += 1
-	if has(relics, "R40"): g += 2
+	var g := 1.0
+	if has(relics, "R39"): g += val("R39", "global_mult")
+	if has(relics, "R40"): g += val("R40", "global_mult")
 	var h: int = cyc["H"]
 	var m := hit_multiplier(relics, h, hit)
 	var f := int(floor(s100 * g * m / 100.0))
@@ -339,18 +344,18 @@ static func compute_settlement(cyc: Dictionary, route: Dictionary, hit: bool) ->
 	# アクアマリン
 	var a_items := [["基本", 1]]
 	if has(relics, "R07") and hit:
-		a_items.append(["R07 的中", 2])
+		a_items.append(["R07 的中", int(val("R07", "aqua"))])
 	if has(relics, "R08") and not marks_visited.is_empty():
-		a_items.append(["R08 マーク訪問", 1])
+		a_items.append(["R08 マーク訪問", int(val("R08", "aqua"))])
 	if has(relics, "R09"):
 		var c := 0
 		for st in steps:
 			if st["r09"]:
 				c += 1
 		if c > 0:
-			a_items.append(["R09 跨ぎ抽選", c])
+			a_items.append(["R09 跨ぎ抽選", c * int(val("R09", "aqua"))])
 	if has(relics, "R10") and D.area_of(s) == D.AREA_YUTTARI and n >= 1 and all_yuttari:
-		a_items.append(["R10 ゆったり滞在", 1])
+		a_items.append(["R10 ゆったり滞在", int(val("R10", "aqua"))])
 	var a_total := 0
 	for it in a_items:
 		a_total += it[1]
@@ -361,21 +366,21 @@ static func compute_settlement(cyc: Dictionary, route: Dictionary, hit: bool) ->
 	growth.fill(0.0)
 	var g_items := []
 	if has(relics, "R20") and hit:
-		growth[q] += 24.0
-		g_items.append(["R20", q, 24.0])
+		growth[q] += val("R20", "growth")
+		g_items.append(["R20", q, val("R20", "growth")])
 	if has(relics, "R21"):
 		# 同じポーズへの再訪問では発動しない（訪問した異なるマークごとに1回）
 		for p in mark_visit_count:
-			growth[p] += 6.0
-			g_items.append(["R21", p, 6.0])
+			growth[p] += val("R21", "growth")
+			g_items.append(["R21", p, val("R21", "growth")])
 	if has(relics, "R22"):
 		var r22 := []
 		r22.resize(D.POSE_COUNT)
 		r22.fill(0.0)
 		for st in steps:
 			if st["cross"]:
-				r22[st["from"]] += 3.0
-				r22[st["to"]] += 3.0
+				r22[st["from"]] += val("R22", "growth")
+				r22[st["to"]] += val("R22", "growth")
 		for p in D.POSE_COUNT:
 			if r22[p] > 0.0:
 				growth[p] += r22[p]
@@ -384,12 +389,12 @@ static func compute_settlement(cyc: Dictionary, route: Dictionary, hit: bool) ->
 		var ps := counts.keys()
 		ps.sort()
 		for p in ps:
-			growth[p] += 12.0
-			g_items.append(["R23", p, 12.0])
+			growth[p] += val("R23", "growth")
+			g_items.append(["R23", p, val("R23", "growth")])
 	if has(relics, "R24") and D.area_of(s) == D.AREA_YUTTARI and n >= 1 and all_yuttari:
 		for p in 5:
-			growth[p] += 3.0
-			g_items.append(["R24", p, 3.0])
+			growth[p] += val("R24", "growth")
+			g_items.append(["R24", p, val("R24", "growth")])
 
 	return {
 		"visits": visits, "S": s100 / 100.0, "G": g, "M": m, "F": f, "hit": hit,

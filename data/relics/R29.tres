@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="RelicData" format=3]
+
+[ext_resource type="Script" path="res://scripts/relic_data.gd" id="1_4lwpa"]
+
+[resource]
+script = ExtResource("1_4lwpa")
+id = "R29"
+display_name = "ねむりの星印"
+rarity = 1
+values = Dictionary[String, float]({
+"marks": 1.0
+})
+description = "マーク数+$marks$。全共通マークの抽選でゆったりを優先"

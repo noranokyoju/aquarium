@@ -6,9 +6,15 @@ signal node_hovered(p: int)
 
 const D := preload("res://scripts/data.gd")
 const R := 27.0
+const MARK_SIZE := 24.0
+## 共通マークが回る間隔と、1回転にかける秒数
+const MARK_SPIN_EVERY := 3.0
+const MARK_SPIN_TIME := 0.6
 const PAIR_OFFSET := 5.0
 ## 跨ぎリンクの曲がり（P01↔P06 … P05↔P10、正規化y方向）
-const CROSS_BEND := [-0.16, -0.21, -0.16, -0.24, 0.26]
+const CROSS_BEND := [-0.16, -0.21, -0.16, 0.22, 0.26]
+## 自己ループを出す向き（度、右=0・下=正）。左上は基礎値の丸枠と重ならないよう避ける
+const LOOP_ANGLE := [180.0, 170.0, 45.0, 160.0, 160.0, 0.0, -31.0, -31.0, -31.0, 180.0]
 
 var bases: Array = []
 var levels: Array = []
@@ -37,7 +43,13 @@ func _process(delta: float) -> void:
 
 
 func area_rect() -> Rect2:
-	return Rect2(0, 22, size.x, 340)
+	return Rect2(0, 56, size.x, 330)
+
+
+## ネットワーク図の中央（ボタン配置用）
+func center_point() -> Vector2:
+	var a := area_rect()
+	return a.position + Vector2(a.size.x * 0.5, a.size.y * 0.60)
 
 
 func node_center(p: int) -> Vector2:
@@ -91,8 +103,6 @@ func _draw() -> void:
 			tw += l["w"]
 		for l in links:
 			var prob := float(l["w"]) / tw if tw > 0 else 0.0
-			if forced:
-				prob = 1.0 if l["kind"] == Logic.KIND_CROSS else 0.0
 			_draw_link(p, l, prob, forced)
 
 	for p in D.POSE_COUNT:
@@ -193,9 +203,7 @@ func _dashed(pts: PackedVector2Array, col: Color, w: float) -> void:
 
 func _draw_self_loop(p: int, col: Color, prob: float, disabled: bool) -> void:
 	var c := node_center(p)
-	var out_dir := Vector2(-1 if D.pose_pos(p).x < 0.5 else 1, -0.6).normalized()
-	if p == 0 or p == 5:
-		out_dir = Vector2(-1 if p == 0 else 1, 0)
+	var out_dir := Vector2.from_angle(deg_to_rad(LOOP_ANGLE[p]))
 	var lc := c + out_dir * (R + 9)
 	var w := 1.5 + 5.0 * prob
 	if disabled:
@@ -210,6 +218,20 @@ func _draw_self_loop(p: int, col: Color, prob: float, disabled: bool) -> void:
 	var nrm := Vector2(-tangent.y, tangent.x)
 	draw_colored_polygon(PackedVector2Array([end_pt + tangent * 4, end_pt - tangent * 5 + nrm * 4,
 		end_pt - tangent * 5 - nrm * 4]), col)
+
+
+## 共通マーク：上下にゆれ、光がふくらみ、ときどきくるりと回る
+func _draw_mark(pos: Vector2, p: int) -> void:
+	var t := _time + p * 0.37
+	pos.y -= 3.0 * (0.5 + 0.5 * sin(t * 3.0))
+	var pulse := 0.5 + 0.5 * sin(t * 4.0)
+	draw_circle(pos, 10.0 + 3.0 * pulse, Color(UI.C_GOLD, 0.12 + 0.12 * pulse))
+	var spin := fmod(t, MARK_SPIN_EVERY) / MARK_SPIN_TIME
+	var sx := cos(spin * TAU) if spin < 1.0 else 1.0
+	var sz := MARK_SIZE * (1.0 + 0.06 * pulse)
+	draw_set_transform(pos, 0.0, Vector2(sx, 1.0))
+	draw_texture_rect(UI.icon_mark(), Rect2(-sz / 2.0, -sz / 2.0, sz, sz), false)
+	draw_set_transform_matrix(Transform2D.IDENTITY)
 
 
 func _draw_node(p: int, f: Font) -> void:
@@ -235,20 +257,35 @@ func _draw_node(p: int, f: Font) -> void:
 	var sc := minf(box / src.size.x, box / src.size.y)
 	var dst := Rect2(c - src.size * sc / 2.0, src.size * sc)
 	draw_texture_rect_region(UI.chars(), dst, src)
-	# マーク
+	# マーク（真上）
 	if marks.has(p):
-		draw_texture_rect(UI.icon_mark(), Rect2(c + Vector2(R - 16, -R - 8), Vector2(24, 24)), false)
-	# 開始地・予想バッジ
+		_draw_mark(c + Vector2(0, -R - 14), p)
+	# 基礎値（左上の丸枠数字）
+	var btxt := Logic.fmt_num(bases[p])
+	var bw := f.get_string_size(btxt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+	var bc := c + Vector2(-R, -R) * 0.72
+	var br := maxf(10.0, bw / 2.0 + 4.0)
+	draw_circle(bc, br, Color("0b1422"))
+	draw_arc(bc, br, 0, TAU, 28, ac, 1.5, true)
+	draw_string(f, bc + Vector2(-bw / 2.0, 5), btxt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UI.C_TEXT)
+	# 名前（開始地・予想バッジを左に並べる）
+	var badges := []
 	if p == start:
-		_badge(c + Vector2(-R - 10, -R - 4), "開始", UI.C_YU if area == 0 else UI.C_HA, f)
+		badges.append(["開始", UI.C_YU if area == 0 else UI.C_HA])
 	if p == guess:
-		_badge(c + Vector2(-R - 10, -R + 14), "予想", UI.C_GOLD, f)
-	# 名前と基礎値
-	var txt := "%s 基礎%s" % [D.pose_name(p), Logic.fmt_num(bases[p])]
-	var tw := f.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-	var lp := c + Vector2(-tw / 2.0, R + 16)
-	draw_rect(Rect2(lp + Vector2(-4, -13), Vector2(tw + 8, 17)), Color(0.03, 0.06, 0.1, 0.85))
-	draw_string(f, lp, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UI.C_TEXT)
+		badges.append(["予想", UI.C_GOLD])
+	var pname := D.pose_name(p)
+	var nw := f.get_string_size(pname, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	var total := nw
+	for b in badges:
+		total += _badge_width(b[0], f) + 3
+	var x := c.x - total / 2.0
+	var ly := c.y + R + 16
+	for b in badges:
+		_badge(Vector2(x, ly - 12), b[0], b[1], f)
+		x += _badge_width(b[0], f) + 3
+	draw_rect(Rect2(Vector2(x - 4, ly - 13), Vector2(nw + 8, 17)), Color(0.03, 0.06, 0.1, 0.85))
+	draw_string(f, Vector2(x, ly), pname, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UI.C_TEXT)
 	# 確率
 	if not probs.is_empty():
 		var pr: float = probs[p]
@@ -262,8 +299,12 @@ func _draw_node(p: int, f: Font) -> void:
 		draw_string(f, pp, ptxt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, col)
 
 
+func _badge_width(txt: String, f: Font) -> float:
+	return f.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 6
+
+
 func _badge(pos: Vector2, txt: String, col: Color, f: Font) -> void:
-	var w := f.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 6
+	var w := _badge_width(txt, f)
 	draw_rect(Rect2(pos, Vector2(w, 15)), col.darkened(0.55))
 	draw_rect(Rect2(pos, Vector2(w, 15)), col, false, 1.0)
 	draw_string(f, pos + Vector2(3, 12), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, col.lightened(0.3))

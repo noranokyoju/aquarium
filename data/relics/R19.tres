@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="RelicData" format=3]
+
+[ext_resource type="Script" path="res://scripts/relic_data.gd" id="1_c6qxe"]
+
+[resource]
+script = ExtResource("1_c6qxe")
+id = "R19"
+display_name = "ひみつの抜け道"
+rarity = 1
+description = "作戦中、開始地を全10ポーズから自由に選べる"

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="RelicData" format=3]
+
+[ext_resource type="Script" path="res://scripts/relic_data.gd" id="1_dfv38"]
+
+[resource]
+script = ExtResource("1_dfv38")
+id = "R28"
+display_name = "はしゃぎの潮"
+rarity = 1
+values = Dictionary[String, float]({
+"bonus": 1.5
+})
+description = "一度でも跨ぎ移動をした後、はしゃぎへの訪問倍率+$bonus$。最初の跨ぎ先がはしゃぎならその訪問から有効"

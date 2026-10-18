@@ -3,6 +3,7 @@ extends Control
 
 const D := preload("res://scripts/data.gd")
 const GameScreen := preload("res://scripts/ui/game_screen.gd")
+const DebugRelics := preload("res://scripts/ui/debug_relics.gd")
 
 var _title: Control
 var _game: GameScreen
@@ -10,6 +11,7 @@ var _ending: Control
 var _result: Control
 var _settings: Control
 var _confirm: Control
+var _debug: DebugRelics
 var _title_msg: Label
 var _continue_btn: Button
 var _screen := ""
@@ -25,6 +27,7 @@ func _ready() -> void:
 	add_child(_title)
 	_game = GameScreen.new()
 	_game.open_settings.connect(_open_settings)
+	_game.open_debug.connect(func(): _debug.open())
 	_game.go_title.connect(func(): _show("title"))
 	_game.run_ended.connect(_on_run_ended)
 	add_child(_game)
@@ -40,6 +43,8 @@ func _ready() -> void:
 	_confirm.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_confirm.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_confirm)
+	_debug = DebugRelics.new()
+	add_child(_debug)
 	_show("title")
 	Sfx.play_bgm()
 
@@ -64,7 +69,7 @@ func _notification(what: int) -> void:
 
 func _update_pause() -> void:
 	if is_inside_tree():
-		get_tree().paused = _focus_lost or (_settings != null and _settings.visible)
+		get_tree().paused = _focus_lost or (_settings != null and _settings.visible) or (_debug != null and _debug.visible)
 
 
 func _show(name: String) -> void:
@@ -213,8 +218,8 @@ func _build_settings() -> Control:
 	root.add_child(dim)
 	var p := PanelContainer.new()
 	p.add_theme_stylebox_override("panel", UI.flat(Color("10203a"), Color("6aa8d0"), 2, 8, 20))
-	p.position = Vector2(390, 170)
-	p.size = Vector2(500, 380)
+	p.position = Vector2(390, 200)
+	p.size = Vector2(500, 320)
 	root.add_child(p)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 14)
@@ -264,8 +269,6 @@ func _build_settings() -> Control:
 		sp.add_child(b)
 	sp.name = "speed_row"
 	v.add_child(sp)
-	var note := UI.label("設定中は有効プレイ時間に加算されず、演出も停止します。", 13, UI.C_SUB)
-	v.add_child(note)
 	var close_row := HBoxContainer.new()
 	close_row.alignment = BoxContainer.ALIGNMENT_END
 	close_row.size_flags_vertical = Control.SIZE_EXPAND_FILL

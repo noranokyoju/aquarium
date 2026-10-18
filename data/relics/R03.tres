@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="RelicData" format=3 uid="uid://b0ug8u2eqhofx"]
+
+[ext_resource type="Script" uid="uid://b4srh60a5xyui" path="res://scripts/relic_data.gd" id="1_7jd1y"]
+
+[resource]
+script = ExtResource("1_7jd1y")
+id = "R03"
+display_name = "ふりなおしの貝"
+description = "作戦中、1サイクル1回だけ全サイコロを無料で振り直せる"

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="RelicData" format=3 uid="uid://driffmlq27631"]
+
+[ext_resource type="Script" uid="uid://b4srh60a5xyui" path="res://scripts/relic_data.gd" id="1_ifw0c"]
+
+[resource]
+script = ExtResource("1_ifw0c")
+id = "R20"
+display_name = "すくすくのしるし"
+rarity = 1
+values = Dictionary[String, float]({
+"growth": 24.0
+})
+description = "的中時、精算後に予想ポーズの基礎値+$growth$"

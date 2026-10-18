@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="RelicData" format=3 uid="uid://8xjv1m4xyoq7"]
+
+[ext_resource type="Script" uid="uid://b4srh60a5xyui" path="res://scripts/relic_data.gd" id="1_d34u8"]
+
+[resource]
+script = ExtResource("1_d34u8")
+id = "R24"
+display_name = "ねむりの庭"
+rarity = 1
+values = Dictionary[String, float]({
+"growth": 3.0
+})
+description = "開始地がゆったりで、1歩以上訪問し全訪問先がゆったりなら、精算後にゆったり全5ポーズの基礎値+$growth$"

@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="RelicData" format=3]
+
+[ext_resource type="Script" path="res://scripts/relic_data.gd" id="1_sgjgo"]
+
+[resource]
+script = ExtResource("1_sgjgo")
+id = "R04"
+display_name = "対岸への切符"
+description = "1歩目は必ずエリアを跨ぐ"

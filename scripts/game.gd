@@ -171,12 +171,19 @@ func discard_relic(id: String) -> void:
 	_commit()
 
 
+## デバッグ用：所持レリックを置き換える（枠数などの制限は見ない）
+func debug_set_relics(ids: Array) -> void:
+	state["relics"] = ids.duplicate()
+	_commit()
+
+
 # ---------------------------------------------------------------- サイクル
 
 func _roll(relics: Array) -> Array:
 	var dice := [rng.randi_range(1, 6)]
 	if relics.has("R31"):
-		dice.append(rng.randi_range(1, 6))
+		for i in int(Logic.val("R31", "dice")):
+			dice.append(rng.randi_range(1, 6))
 	return dice
 
 
@@ -220,18 +227,30 @@ func reroll() -> void:
 
 
 func can_buy_step() -> bool:
-	if phase() != "plan" or not cyc_has("R32") or state["A"] < 1:
+	if phase() != "plan" or not cyc_has("R32") or state["A"] < r32_cost():
 		return false
 	var c := cyc()
-	return Logic.calc_n0(c, c["b"] + 2) > Logic.calc_n0(c, c["b"])
+	return Logic.calc_n0(c, c["b"] + r32_steps()) > Logic.calc_n0(c, c["b"])
+
+
+func r32_cost() -> int:
+	return int(Logic.val("R32", "cost"))
+
+
+func r32_steps() -> int:
+	return int(Logic.val("R32", "steps"))
+
+
+func r33_cost() -> int:
+	return int(Logic.val("R33", "cost"))
 
 
 func buy_step() -> void:
 	if not can_buy_step():
 		return
 	var c := cyc()
-	state["A"] -= 1
-	c["b"] += 2
+	state["A"] -= r32_cost()
+	c["b"] += r32_steps()
 	c["n0"] = Logic.calc_n0(c, c["b"])
 	_commit()
 
@@ -271,7 +290,7 @@ func finish_moving() -> void:
 	var c := cyc()
 	c["anim"] = c["route"]["steps"].size()
 	c["hit"] = Logic.base_hit(c, c["route"]["end"])
-	if not c["hit"] and cyc_has("R33") and state["A"] >= D.R33_COST:
+	if not c["hit"] and cyc_has("R33") and state["A"] >= r33_cost():
 		state["phase"] = "r33"
 		_commit()
 	else:
@@ -282,8 +301,8 @@ func r33_choose(use: bool) -> void:
 	if phase() != "r33":
 		return
 	var c := cyc()
-	if use and state["A"] >= D.R33_COST:
-		state["A"] -= D.R33_COST
+	if use and state["A"] >= r33_cost():
+		state["A"] -= r33_cost()
 		c["hit"] = true
 		c["r33_used"] = true
 	_settle()

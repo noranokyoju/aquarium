@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="RelicData" format=3]
+
+[ext_resource type="Script" path="res://scripts/relic_data.gd" id="1_p85do"]
+
+[resource]
+script = ExtResource("1_p85do")
+id = "R15"
+display_name = "ふたつの星印"
+values = Dictionary[String, float]({
+"marks": 2.0
+})
+description = "マーク数+$marks$"

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="RelicData" format=3 uid="uid://ny6wkc0c5xkw"]
+
+[ext_resource type="Script" uid="uid://b4srh60a5xyui" path="res://scripts/relic_data.gd" id="1_0oqkg"]
+
+[resource]
+script = ExtResource("1_0oqkg")
+id = "R39"
+display_name = "みじかい旅"
+rarity = 2
+values = Dictionary[String, float]({
+"global_mult": 1.0,
+"max_steps": 3.0
+})
+description = "全体倍率+$global_mult:1$"
+note = "$max_steps+1$歩以上移動できない"

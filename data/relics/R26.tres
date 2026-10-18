@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="RelicData" format=3]
+
+[ext_resource type="Script" path="res://scripts/relic_data.gd" id="1_bu1ym"]
+
+[resource]
+script = ExtResource("1_bu1ym")
+id = "R26"
+display_name = "にじいろ標本"
+rarity = 1
+values = Dictionary[String, float]({
+"bonus": 0.25
+})
+description = "t歩目までに訪問した異なるポーズ数Dtにつき、訪問倍率+$bonus$Dt"

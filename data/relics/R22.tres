@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="RelicData" format=3 uid="uid://4ks7shmq1vb7"]
+
+[ext_resource type="Script" uid="uid://b4srh60a5xyui" path="res://scripts/relic_data.gd" id="1_ofldr"]
+
+[resource]
+script = ExtResource("1_ofldr")
+id = "R22"
+display_name = "両岸の芽"
+rarity = 1
+values = Dictionary[String, float]({
+"growth": 3.0
+})
+description = "跨ぎ移動1回ごとに移動元・移動先それぞれ基礎値+$growth$を精算後に反映"

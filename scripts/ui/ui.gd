@@ -38,21 +38,22 @@ static func font() -> Font:
 	return _font
 
 
-static func misc(col: int, row: int) -> AtlasTexture:
-	var key := "m%d_%d" % [col, row]
+## misc.png（64px セル）の一部。inner はセル内の切り出し範囲
+static func misc(col: int, row: int, inner := Rect2(12, 12, 40, 40)) -> AtlasTexture:
+	var key := "m%d_%d_%s" % [col, row, inner]
 	if not _cache.has(key):
 		if _misc == null:
 			_misc = load("res://assets/image/misc.png")
 		var a := AtlasTexture.new()
 		a.atlas = _misc
-		a.region = Rect2(col * 64 + 12, row * 64 + 12, 40, 40)
+		a.region = Rect2(inner.position + Vector2(col * 64, row * 64), inner.size)
 		_cache[key] = a
 	return _cache[key]
 
 
 static func icon_fish() -> Texture2D: return misc(7, 0)
-static func icon_aqua() -> Texture2D: return misc(1, 2)
-static func icon_mark() -> Texture2D: return misc(6, 1)
+static func icon_aqua() -> Texture2D: return misc(2, 1, Rect2(12, 18, 40, 40))
+static func icon_mark() -> Texture2D: return misc(1, 2, Rect2(12, 16, 40, 40))
 static func icon_dice(v: int) -> Texture2D: return misc(clampi(v, 1, 6) - 1, 0)
 static func icon_dice_roll() -> Texture2D: return misc(6, 0)
 static func icon_gear() -> Texture2D: return misc(0, 3)
@@ -212,7 +213,7 @@ static func relic_text(id: String) -> String:
 	if note != "":
 		s += "\n[color=%s]%s[/color]" % [hexc(C_GOLD if note.begins_with("【") else C_SUB), note]
 	if ["R08", "R15", "R35", "R21", "R29", "R30", "R36", "R38"].has(id):
-		s += "\n[color=%s]共通マーク：各訪問で訪問倍率+0.5（R38所持時は+3.0に置換）[/color]" % hexc(C_SUB)
+		s += "\n[color=%s]共通マーク：各訪問で訪問倍率+0.5（R38所持時は+%.1fに置換）[/color]" % [hexc(C_SUB), D.relic_value("R38", "mark_bonus")]
 	return s
 
 

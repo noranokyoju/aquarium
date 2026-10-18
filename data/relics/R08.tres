@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="RelicData" format=3 uid="uid://c7l6jpljmpwrl"]
+
+[ext_resource type="Script" uid="uid://b4srh60a5xyui" path="res://scripts/relic_data.gd" id="1_cc6n0"]
+
+[resource]
+script = ExtResource("1_cc6n0")
+id = "R08"
+display_name = "あおい目印"
+values = Dictionary[String, float]({
+"aqua": 1.0,
+"marks": 1.0
+})
+description = "マーク数+$marks$。共通マークを1回以上訪問すると追加アクアマリン$aqua$個。1サイクル最大$aqua$個"

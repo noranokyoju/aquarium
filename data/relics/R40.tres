@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="RelicData" format=3 uid="uid://1v7gnplnjnwn"]
+
+[ext_resource type="Script" uid="uid://b4srh60a5xyui" path="res://scripts/relic_data.gd" id="1_fx1l4"]
+
+[resource]
+script = ExtResource("1_fx1l4")
+id = "R40"
+display_name = "おそざきの花"
+rarity = 2
+values = Dictionary[String, float]({
+"global_mult": 2.0,
+"zero_steps": 3.0
+})
+description = "全体倍率+$global_mult:1$"
+note = "1〜$zero_steps$歩目の各訪問報酬0"

@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="RelicData" format=3]
+
+[ext_resource type="Script" path="res://scripts/relic_data.gd" id="1_dhqb7"]
+
+[resource]
+script = ExtResource("1_dhqb7")
+id = "R01"
+display_name = "ひとすじの潮"
+description = "全反時計回りリンクを無効化"

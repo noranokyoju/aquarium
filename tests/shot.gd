@@ -32,11 +32,29 @@ func _ready() -> void:
 	main._game._hover(main._game._node_text(0))
 	await _shot("03_idle")
 	main._game._hover("")
+	main._debug.open()
+	main._debug._toggle("R31")
+	main._debug._info.text = UI.relic_text("R31")
+	await _frames(5)
+	await _shot("03d_debug")
+	main._debug._toggle("R31")
+	main._debug.close()
+	get_tree().paused = false
 	main._game._on_roll()
-	await get_tree().create_timer(0.7).timeout
+	await get_tree().create_timer(0.3).timeout
+	await _shot("03b_rolling")
+	await get_tree().create_timer(0.45).timeout
+	await _shot("03c_rolled")
+	await get_tree().create_timer(0.45).timeout
 	await _shot("04_plan")
+	main._game._r35_mode = true
+	main._game.refresh()
+	await _frames(5)
+	await _shot("04b_r19")
+	main._game._r35_mode = false
+	main._game.refresh()
 	main._game._on_confirm()
-	await get_tree().create_timer(1.3).timeout
+	await get_tree().create_timer(1.15).timeout
 	await _shot("05_moving")
 	main._game._skip = true
 	await get_tree().create_timer(1.0).timeout
@@ -46,7 +64,7 @@ func _ready() -> void:
 	Game.state["c"] = 9
 	Game.state["W"] = 0
 	main._game._on_roll()
-	await get_tree().create_timer(0.7).timeout
+	await get_tree().create_timer(1.2).timeout
 	main._game._on_confirm()
 	main._game._skip = true
 	await get_tree().create_timer(1.0).timeout

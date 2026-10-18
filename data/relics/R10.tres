@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="RelicData" format=3 uid="uid://3qe8t56jubai"]
+
+[ext_resource type="Script" uid="uid://b4srh60a5xyui" path="res://scripts/relic_data.gd" id="1_pstrq"]
+
+[resource]
+script = ExtResource("1_pstrq")
+id = "R10"
+display_name = "しずかな真珠"
+values = Dictionary[String, float]({
+"aqua": 1.0
+})
+description = "開始地がゆったりで、1歩以上訪問し全訪問先がゆったりなら追加アクアマリン$aqua$個"

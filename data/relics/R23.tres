@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="RelicData" format=3 uid="uid://ew2oleqyf4iu"]
+
+[ext_resource type="Script" uid="uid://b4srh60a5xyui" path="res://scripts/relic_data.gd" id="1_t7fo1"]
+
+[resource]
+script = ExtResource("1_t7fo1")
+id = "R23"
+display_name = "ただいまの真珠"
+rarity = 1
+values = Dictionary[String, float]({
+"growth": 12.0
+})
+description = "開始地と終点が同じなら、今回訪問した異なる全ポーズの基礎値+$growth$を精算後に反映"

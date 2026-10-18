@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="RelicData" format=3]
+
+[ext_resource type="Script" path="res://scripts/relic_data.gd" id="1_o5xm5"]
+
+[resource]
+script = ExtResource("1_o5xm5")
+id = "R25"
+display_name = "こだま貝"
+rarity = 1
+values = Dictionary[String, float]({
+"bonus": 1.0
+})
+description = "同じサイクル内の同じポーズへの2回目以降の訪問倍率+$bonus:1$"
+note = "3回目以降も+$bonus:1$です。"

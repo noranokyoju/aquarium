@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="RelicData" format=3 uid="uid://ccm0k21qwxclx"]
+
+[ext_resource type="Script" uid="uid://b4srh60a5xyui" path="res://scripts/relic_data.gd" id="1_agdeb"]
+
+[resource]
+script = ExtResource("1_agdeb")
+id = "R21"
+display_name = "育ちざかりの印"
+rarity = 1
+values = Dictionary[String, float]({
+"growth": 6.0,
+"marks": 1.0
+})
+description = "マーク数+$marks$。訪問した共通マークのポーズそれぞれに基礎値+$growth$を精算後に反映。同じポーズへの再訪問では発動しない"

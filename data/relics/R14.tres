@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="RelicData" format=3]
+
+[ext_resource type="Script" path="res://scripts/relic_data.gd" id="1_ccuak"]
+
+[resource]
+script = ExtResource("1_ccuak")
+id = "R14"
+display_name = "潮渡りの羽"
+values = Dictionary[String, float]({
+"bonus": 0.75
+})
+description = "エリアを跨いで到着した訪問の倍率+$bonus$"

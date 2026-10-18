@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="RelicData" format=3]
+
+[ext_resource type="Script" path="res://scripts/relic_data.gd" id="1_dqdsl"]
+
+[resource]
+script = ExtResource("1_dqdsl")
+id = "R27"
+display_name = "ひといろの夢"
+rarity = 1
+values = Dictionary[String, float]({
+"bonus": 0.75
+})
+description = "開始地がゆったりで、一度もそのエリアを離れていない間、訪問倍率+$bonus$"
+note = "一度離れると戻っても復活しません。"

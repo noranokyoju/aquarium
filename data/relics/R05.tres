@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="RelicData" format=3 uid="uid://bl8iaumgkcu5i"]
+
+[ext_resource type="Script" uid="uid://b4srh60a5xyui" path="res://scripts/relic_data.gd" id="1_2e70w"]
+
+[resource]
+script = ExtResource("1_2e70w")
+id = "R05"
+display_name = "ながいしっぽ"
+values = Dictionary[String, float]({
+"steps": 1.0
+})
+description = "毎サイクル通常歩数+$steps$"

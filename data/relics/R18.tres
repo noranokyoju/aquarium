@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="RelicData" format=3]
+
+[ext_resource type="Script" path="res://scripts/relic_data.gd" id="1_7jh7e"]
+
+[resource]
+script = ExtResource("1_7jh7e")
+id = "R18"
+display_name = "交互の波"
+rarity = 1
+values = Dictionary[String, float]({
+"interval": 3.0
+})
+description = "$interval$の倍数の歩目（$interval$・$interval*2$・$interval*3$…歩目）は必ずエリアを跨ぐ"

@@ -11,7 +11,6 @@ const AREA_NAMES := ["ゆったり", "はしゃぎ"]
 const POSE_COUNT := 10
 ## エリア別の初期基礎値（ゆったり, はしゃぎ）
 const BASE_INIT := [12.0, 20.0]
-const R33_COST := 5
 const L_MAX := 5
 
 ## ID, 名称, エリア, x, y
@@ -54,49 +53,8 @@ const RARITY_NAMES := ["コモン", "アンコモン", "レア"]
 const RARITY_WEIGHTS := [60, 30, 10]
 const RARITY_PRICES := [3, 5, 7]
 
-## ID, 名称, 効果, 補足（省略不可の注意書き）
-const RELICS := [
-	["R01", "ひとすじの潮", "全反時計回りリンクを無効化", ""],
-	["R02", "とどまる泡", "全ノードに重み6の自己ループを追加", ""],
-	["R03", "ふりなおしの貝", "作戦中、1サイクル1回だけ全サイコロを無料で振り直せる", "振り直した結果を必ず採用します。"],
-	["R04", "対岸への切符", "1歩目は必ずエリアを跨ぐ", ""],
-	["R05", "ながいしっぽ", "毎サイクル通常歩数+1", ""],
-	["R06", "ゆっくりのひれ", "毎サイクル通常歩数-1。全跨ぎリンクの重みを1にする", ""],
-	["R07", "的中の結晶", "的中時、アクアマリンを追加で2個獲得", ""],
-	["R08", "あおい目印", "マーク数+1。共通マークを1回以上訪問するとA+1。1サイクル最大1個", ""],
-	["R09", "潮の鉱脈", "跨ぎ移動ごとに独立50%でA+1。発動回数の上限なし", ""],
-	["R10", "しずかな真珠", "開始地がゆったりで、1歩以上訪問し全訪問先がゆったりならA+1", ""],
-	["R11", "ぴたりのしるし", "的中倍率+2.0", ""],
-	["R12", "ねむりの香り", "ゆったりへの訪問倍率+0.4", ""],
-	["R13", "あそびの鈴", "はしゃぎへの訪問倍率+0.4", ""],
-	["R14", "潮渡りの羽", "エリアを跨いで到着した訪問の倍率+0.75", ""],
-	["R15", "ふたつの星印", "マーク数+2", ""],
-	["R16", "ここでひと休み", "予想ポーズqを訪問すると残り歩数にかかわらず全移動を終了し、的中扱い", "開始地に立っているだけでは停止しません。"],
-	["R17", "豊かな潮流", "基礎値合計の小さいエリアから大きいエリアへ向かう跨ぎ重みを8にする", "合計が同額なら変更しません。"],
-	["R18", "交互の波", "3の倍数の歩目（3・6・9…歩目）は必ずエリアを跨ぐ", ""],
-	["R19", "ひみつの抜け道", "作戦中、開始地を全10ポーズから自由に選べる", ""],
-	["R20", "すくすくのしるし", "的中時、精算後に予想ポーズqのBp+24", ""],
-	["R21", "育ちざかりの印", "マーク数+1。訪問した共通マークのポーズそれぞれにBp+6を精算後に反映。同じポーズへの再訪問では発動しない", ""],
-	["R22", "両岸の芽", "跨ぎ移動1回ごとに移動元・移動先それぞれBp+3を精算後に反映", ""],
-	["R23", "ただいまの真珠", "開始地と終点が同じなら、今回訪問した異なる全ポーズのBp+12を精算後に反映", ""],
-	["R24", "ねむりの庭", "開始地がゆったりで、1歩以上訪問し全訪問先がゆったりなら、精算後にゆったり全5ポーズのBp+3", ""],
-	["R25", "こだま貝", "同じサイクル内の同じポーズへの2回目以降の訪問倍率+1.0", "3回目以降も+1.0です。"],
-	["R26", "にじいろ標本", "t歩目までに訪問した異なるポーズ数Dtにつき、訪問倍率+0.25Dt", ""],
-	["R27", "ひといろの夢", "開始地がゆったりで、一度もそのエリアを離れていない間、訪問倍率+0.75", "一度離れると戻っても復活しません。"],
-	["R28", "はしゃぎの潮", "一度でも跨ぎ移動をした後、はしゃぎへの訪問倍率+1.5。最初の跨ぎ先がはしゃぎならその訪問から有効", ""],
-	["R29", "ねむりの星印", "マーク数+1。全共通マークの抽選でゆったりを優先", ""],
-	["R30", "渡りの星図", "前サイクルの跨ぎ回数Kprevだけマーク数を増やす", ""],
-	["R31", "ふたつの流れ星", "サイコロを追加で1個振る。2個の目の合計を使う", ""],
-	["R32", "結晶のひと泳ぎ", "作戦中、Aを1個消費するたび通常歩数+2", "消費後は取り消せません。"],
-	["R33", "運命の結晶", "移動終了後、はずれならAを5個消費して的中扱いにできる", "今回の獲得予定Aは使えません。"],
-	["R34", "潮の余韻", "通常移動の残り歩数が0になった際、そこまでの跨ぎ回数分を1回だけ追加移動。qへ到着した時点で追加移動を終了", ""],
-	["R35", "星をたどるひれ", "マーク数+1。前サイクルに訪問した異なる共通マーク数Mprevだけ通常歩数を増やす", ""],
-	["R36", "あたりの星印", "マーク数+1。共通マークで移動を終えたら的中扱い", ""],
-	["R37", "連勝の王冠", "的中倍率+2.0。連続的中ごとにさらに+2.0、加算上限+10.0", "【注意】はずれ時のおさかな報酬は0になります。"],
-	["R38", "星だけの世界", "マーク数+2。共通マークの訪問倍率加算を+0.5から+3.0へ置換", "【注意】未マークへの各訪問報酬は0になります。"],
-	["R39", "みじかい旅", "全体倍率+1.0", "【注意】4歩以上移動できません（追加移動を含め全移動上限3歩）。"],
-	["R40", "おそざきの花", "全体倍率+2.0", "【注意】1〜3歩目の各訪問報酬は0になります。"],
-]
+## レリックのデータ（名称・レアリティ・効果量・説明文）は res://data/relics/*.tres
+const RELIC_DIR := "res://data/relics"
 
 const TUTORIAL := {
 	"t1": "10サイクル後の「所持おさかな」で目標を判定します。\n買い物で使ったおさかなは残高から減るので注意しましょう。",
@@ -141,40 +99,62 @@ static func cross_of(p: int) -> int:
 	return (p + 5) % 10
 
 
+static var _relics := {}
+
+
+## 全レリックを読み込む（ID → RelicData）
+static func relics() -> Dictionary:
+	if _relics.is_empty():
+		var files := Array(ResourceLoader.list_directory(RELIC_DIR))
+		files.sort()
+		for f in files:
+			if not f.ends_with(".tres"):
+				continue
+			var r := load(RELIC_DIR.path_join(f)) as RelicData
+			if r == null or r.id == "":
+				push_error("レリックを読み込めません：" + f)
+				continue
+			_relics[r.id] = r
+	return _relics
+
+
+static func relic(id: String) -> RelicData:
+	return relics()[id]
+
+
 static func relic_index(id: String) -> int:
 	return int(id.substr(1)) - 1
 
 
 static func relic_name(id: String) -> String:
-	return RELICS[relic_index(id)][1]
+	return relic(id).display_name
 
 
 static func relic_effect(id: String) -> String:
-	return RELICS[relic_index(id)][2]
+	return relic(id).description_text()
 
 
 static func relic_note(id: String) -> String:
-	return RELICS[relic_index(id)][3]
+	return relic(id).note_text()
+
+
+## 効果量（RelicData.values）
+static func relic_value(id: String, key: String) -> float:
+	return relic(id).value(key)
 
 
 static func relic_rarity(id: String) -> int:
-	var i := relic_index(id)
-	if i < 15:
-		return RARITY_COMMON
-	if i < 30:
-		return RARITY_UNCOMMON
-	return RARITY_RARE
+	return relic(id).rarity
 
 
 static func relic_price(id: String) -> int:
-	return RARITY_PRICES[relic_rarity(id)]
+	return relic(id).price
 
 
 static func all_relic_ids() -> Array:
-	var out := []
-	for r in RELICS:
-		out.append(r[0])
-	return out
+	var ids := relics().keys()
+	ids.sort()
+	return ids
 
 
 static func round_name(r: int) -> String:

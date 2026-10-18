@@ -2,6 +2,7 @@ extends Control
 ## プレイ画面（上部ステータス・キャラクター・ネットワーク・ショップ・所持品・説明欄）
 
 signal open_settings
+signal open_debug
 signal go_title
 signal run_ended
 
@@ -9,13 +10,18 @@ const D := preload("res://scripts/data.gd")
 const NetworkView := preload("res://scripts/ui/network_view.gd")
 
 const NET_RECT := Rect2(330, 44, 946, 456)
+const GLOW_TIME := 0.9
+## サイコロ演出：高速で目を切り替える時間・結果を見せる時間（標準速度での秒数）
+const DICE_SPIN := 0.6
+const DICE_HOLD := 0.4
+const DICE_FLIP := 0.05
+const DICE_BUTTON_H := 112.0
 
 var net: NetworkView
 var _top: HBoxContainer
 var _char_tex: TextureRect
 var _char_name: Label
 var _char_bg: TextureRect
-var _dice_box: HBoxContainer
 var _ctrl_info: RichTextLabel
 var _ctrl_buttons: HBoxContainer
 var _shop_box: HBoxContainer
@@ -24,7 +30,11 @@ var _owned_head: Label
 var _owned_grid: GridContainer
 var _info: RichTextLabel
 var _info_actions: HBoxContainer
+var _center_box: VBoxContainer
+var _focus_layer: Control
+var _focus_border: Panel
 var _float_layer: Control
+var _glow_layer: Control
 var _modal_layer: Control
 var _tut_layer: Control
 
@@ -36,10 +46,17 @@ var _tut_queue: Array = []
 var _moving_running := false
 var _skip := false
 var _dice_anim := 0.0
+var _dice_flip := 0.0
+var _dice_faces: Array[TextureRect] = []
+var _last_dice := [1]
 var _shown_w := 0.0
 var _w_tween: Tween
 var _char_pose := 0
 var _time := 0.0
+var _relic_glow := {}        # レリックID → 発動演出の残り秒
+var _owned_slots := {}       # レリックID → 所持枠（再構築のたびに更新）
+var _glow_after_dice := false
+var _relic_re := RegEx.create_from_string("R\\d\\d")
 
 
 func _ready() -> void:
@@ -69,6 +86,8 @@ func _build() -> void:
 	_top.add_theme_constant_override("separation", 18)
 	_top.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top_row.add_child(_top)
+	if OS.is_debug_build():
+		top_row.add_child(UI.button("デバッグ", func(): open_debug.emit(), 14))
 	top_row.add_child(UI.button("設定", func(): open_settings.emit(), 14))
 	top_row.add_child(UI.button("タイトルへ", func(): go_title.emit(), 14))
 
@@ -101,10 +120,6 @@ func _build() -> void:
 	_char_name.add_theme_color_override("font_outline_color", Color("0a1220"))
 	_char_name.add_theme_constant_override("outline_size", 6)
 	cp.add_child(_char_name)
-	_dice_box = HBoxContainer.new()
-	_dice_box.position = Vector2(10, 10)
-	_dice_box.add_theme_constant_override("separation", 4)
-	cp.add_child(_dice_box)
 
 	# 右：ネットワーク
 	net = NetworkView.new()
@@ -114,20 +129,58 @@ func _build() -> void:
 	net.node_hovered.connect(_on_node_hovered)
 	add_child(net)
 
-	var ctrl := VBoxContainer.new()
-	ctrl.position = NET_RECT.position + Vector2(12, 352)
-	ctrl.size = Vector2(NET_RECT.size.x - 24, 100)
-	ctrl.add_theme_constant_override("separation", 2)
+	var ctrl := HBoxContainer.new()
+	ctrl.position = NET_RECT.position + Vector2(12, 396)
+	ctrl.size = Vector2(NET_RECT.size.x - 24, 54)
+	ctrl.add_theme_constant_override("separation", 8)
 	add_child(ctrl)
 	_ctrl_info = UI.rich(14)
-	_ctrl_info.custom_minimum_size = Vector2(0, 60)
+	_ctrl_info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_ctrl_info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_ctrl_info.fit_content = true
 	_ctrl_info.scroll_active = false
 	_ctrl_info.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ctrl.add_child(_ctrl_info)
 	_ctrl_buttons = HBoxContainer.new()
 	_ctrl_buttons.add_theme_constant_override("separation", 8)
 	_ctrl_buttons.alignment = BoxContainer.ALIGNMENT_END
+	_ctrl_buttons.size_flags_vertical = Control.SIZE_SHRINK_END
 	ctrl.add_child(_ctrl_buttons)
+
+	# ネットワーク図中央のボタン（サイコロ・その下に「ここにする」）。サイコロの中心を図の中央に合わせる
+	_center_box = VBoxContainer.new()
+	_center_box.add_theme_constant_override("separation", 8)
+	_center_box.size = Vector2(300, 200)
+	_center_box.position = net.position + net.center_point() - Vector2(_center_box.size.x / 2.0, DICE_BUTTON_H / 2.0)
+	_center_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_center_box)
+
+	# R19 開始地選択中：ネットワーク図以外をグレーアウト
+	_focus_layer = Control.new()
+	_focus_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_focus_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_focus_layer.visible = false
+	add_child(_focus_layer)
+	var r := NET_RECT
+	for rect in [Rect2(0, 0, 1280, r.position.y), Rect2(0, r.end.y, 1280, 720 - r.end.y),
+			Rect2(0, r.position.y, r.position.x, r.size.y), Rect2(r.end.x, r.position.y, 1280 - r.end.x, r.size.y)]:
+		var dim := ColorRect.new()
+		dim.color = Color(0.02, 0.04, 0.07, 0.7)
+		dim.position = rect.position
+		dim.size = rect.size
+		dim.gui_input.connect(func(ev: InputEvent):
+			if ev is InputEventMouseButton and ev.pressed:
+				_r35_mode = false
+				refresh())
+		_focus_layer.add_child(dim)
+	_focus_border = Panel.new()
+	var fb := UI.flat(Color(0, 0, 0, 0), UI.C_GOLD, 3, 10, 0)
+	fb.draw_center = false
+	_focus_border.add_theme_stylebox_override("panel", fb)
+	_focus_border.position = r.position - Vector2(3, 3)
+	_focus_border.size = r.size + Vector2(6, 6)
+	_focus_border.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_focus_layer.add_child(_focus_border)
 
 	# 下：ショップ
 	var shop := PanelContainer.new()
@@ -177,6 +230,11 @@ func _build() -> void:
 	_float_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_float_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_float_layer)
+	_glow_layer = Control.new()
+	_glow_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_glow_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_glow_layer.draw.connect(_draw_glow)
+	add_child(_glow_layer)
 	_modal_layer = Control.new()
 	_modal_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_modal_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -194,6 +252,7 @@ func enter() -> void:
 	_r35_mode = false
 	_skip = false
 	_dice_anim = 0.0
+	_last_dice = [1]
 	for c in _modal_layer.get_children():
 		c.queue_free()
 	_shown_w = Game.state["W"]
@@ -215,9 +274,29 @@ func enter() -> void:
 func _process(delta: float) -> void:
 	_time += delta
 	if _dice_anim > 0.0:
+		var was_spinning := _dice_spinning()
 		_dice_anim -= delta
+		if _dice_spinning():
+			_dice_flip -= delta
+			if _dice_flip <= 0.0:
+				_dice_flip = DICE_FLIP / _speed()
+				for r in _dice_faces:
+					r.texture = _random_face(r.texture)
+		elif was_spinning:
+			_show_dice_result()
 		if _dice_anim <= 0.0:
 			refresh()
+			if _glow_after_dice:
+				_glow_after_dice = false
+				_glow_dice_relics()
+	if not _relic_glow.is_empty():
+		for id in _relic_glow.keys():
+			_relic_glow[id] -= delta
+			if _relic_glow[id] <= 0.0:
+				_relic_glow.erase(id)
+		_glow_layer.queue_redraw()
+	if _focus_layer.visible:
+		_focus_border.modulate.a = 0.6 + 0.4 * sin(_time * 4.0)
 	# ゆらゆら
 	_char_tex.position.y = 74 + sin(_time * 1.6) * 4.0
 	if Game.has_run() and absf(_shown_w - Game.state["W"]) > 0.5 and (_w_tween == null or not _w_tween.is_running()):
@@ -284,19 +363,6 @@ func _refresh_char() -> void:
 	_char_tex.texture = _char_atlas(p)
 	_char_name.text = "%s（%s）" % [D.pose_name(p), D.AREA_NAMES[D.area_of(p)]]
 	_char_name.add_theme_color_override("font_color", UI.area_color(D.area_of(p)))
-	for ch in _dice_box.get_children():
-		ch.queue_free()
-	var c := Game.cyc()
-	if c.is_empty():
-		return
-	for v in c["dice"]:
-		var tex := UI.icon_dice_roll() if _dice_anim > 0.0 else UI.icon_dice(v)
-		_dice_box.add_child(UI.icon_rect(tex, 48))
-	if _dice_anim <= 0.0:
-		var l := UI.label("出目 %d" % Logic.dice_sum(c["dice"]), 18)
-		l.add_theme_color_override("font_outline_color", Color("0a1220"))
-		l.add_theme_constant_override("outline_size", 6)
-		_dice_box.add_child(l)
 
 
 var _char_atlas_cache := {}
@@ -351,6 +417,9 @@ func _refresh_net() -> void:
 func _refresh_controls() -> void:
 	for c in _ctrl_buttons.get_children():
 		c.queue_free()
+	for c in _center_box.get_children():
+		c.queue_free()
+	_dice_faces.clear()
 	var ph := Game.phase()
 	var st := Game.state
 	var cyc := Game.cyc()
@@ -359,17 +428,15 @@ func _refresh_controls() -> void:
 		"idle":
 			if st["pending_swap"] >= 0:
 				info = "入れ替えるレリックを選んでください。"
-			else:
-				info = "待機中：買い物・ポーズ強化・更新・破棄ができます。\n[color=%s]終点確率：サイコロ後に表示[/color]" % UI.hexc(UI.C_SUB)
-			var b := UI.button("  サイコロをふる  ", _on_roll, 18)
-			b.disabled = not Game.can_shop()
-			_ctrl_buttons.add_child(b)
+			_center_box.add_child(_dice_button(_last_dice, true))
 		"plan":
 			info = _plan_info(cyc)
+			_center_box.add_child(_dice_button(cyc["dice"], false))
 			if _dice_anim <= 0.0:
 				_add_plan_buttons(cyc)
 		"moving", "r33", "report":
 			info = _moving_info(cyc)
+			_center_box.add_child(_dice_button(cyc["dice"], false))
 			if ph == "moving":
 				var sk := UI.button("結果までスキップ", func(): _skip = true)
 				sk.disabled = _skip
@@ -377,6 +444,75 @@ func _refresh_controls() -> void:
 	if ph in ["idle", "moving"]:
 		_ctrl_buttons.add_child(UI.button("速度 %s" % _speed_name(), _cycle_speed))
 	_ctrl_info.text = info
+	_focus_layer.visible = ph == "plan" and _r35_mode
+
+
+## ネットワーク図中央のサイコロ。clickable でなければ回転中・出目表示用（押せない）
+func _dice_button(dice: Array, clickable: bool) -> Button:
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(maxf(120.0, 20 + 64 * dice.size() + 4 * (dice.size() - 1)), DICE_BUTTON_H)
+	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 2)
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(col)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 4)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(row)
+	var cap := UI.label("サイコロをふる", 15, UI.C_TEXT if clickable else UI.C_SUB)
+	cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(cap)
+	for v in dice:
+		var r := UI.icon_rect(UI.icon_dice(v), 64)
+		r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		r.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		if not clickable and _dice_spinning():
+			r.texture = _random_face(null)
+		row.add_child(r)
+		if not clickable:
+			_dice_faces.append(r)
+	if clickable:
+		b.disabled = not Game.can_shop()
+		if b.disabled:
+			col.modulate = Color(1, 1, 1, 0.4)
+		b.pressed.connect(func():
+			Sfx.play("click")
+			_on_roll())
+	else:
+		b.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return b
+
+
+func _dice_spinning() -> bool:
+	return _dice_anim > DICE_HOLD / _speed()
+
+
+## 直前と違う目をランダムに選ぶ
+func _random_face(prev: Texture2D) -> Texture2D:
+	var tex := UI.icon_dice(randi_range(1, 6))
+	while tex == prev:
+		tex = UI.icon_dice(randi_range(1, 6))
+	return tex
+
+
+## 回転を止めて実際の出目を見せる
+func _show_dice_result() -> void:
+	var c := Game.cyc()
+	if c.is_empty():
+		return
+	_last_dice = c["dice"].duplicate()
+	for i in mini(_dice_faces.size(), _last_dice.size()):
+		_dice_faces[i].texture = UI.icon_dice(_last_dice[i])
+	Sfx.play("step")
+
+
+func _start_dice_anim() -> void:
+	_dice_anim = (DICE_SPIN + DICE_HOLD) / _speed()
+	_dice_flip = 0.0
 
 
 func _speed_name() -> String:
@@ -405,11 +541,11 @@ func _plan_info(cyc: Dictionary) -> String:
 		return "サイコロを振っています…"
 	var rel: Array = cyc["relics"]
 	var mods := []
-	if rel.has("R05"): mods.append("R05 +1")
-	if rel.has("R06"): mods.append("R06 -1")
+	if rel.has("R05"): mods.append("R05 +%d" % Logic.val("R05", "steps"))
+	if rel.has("R06"): mods.append("R06 -%d" % Logic.val("R06", "steps"))
 	if rel.has("R35"): mods.append("R35 +%d" % cyc["Mprev"])
 	if cyc["b"] > 0: mods.append("R32 +%d" % cyc["b"])
-	if rel.has("R39"): mods.append("R39 上限3")
+	if rel.has("R39"): mods.append("R39 上限%d" % Logic.val("R39", "max_steps"))
 	var s := "出目 [b]%s[/b]" % _dice_text(cyc["dice"])
 	if not mods.is_empty():
 		s += "（%s）" % "、".join(mods)
@@ -417,10 +553,6 @@ func _plan_info(cyc: Dictionary) -> String:
 		UI.hexc(UI.C_GOLD), cyc["n0"], D.pose_name(cyc["s"]), UI.hexc(UI.C_GOLD), D.pose_name(cyc["q"])]
 	if Logic.is_forced_step(1, rel) and cyc["n0"] > 0:
 		s += "　[color=%s]1歩目は強制跨ぎ[/color]" % UI.hexc(UI.C_GOLD)
-	var note := "※確率は通常移動のみの終点分布（早期停止・追加移動・的中扱いを含まない）"
-	if rel.has("R16") or rel.has("R34") or rel.has("R33") or rel.has("R36"):
-		note += "。表示値は最終的中率ではありません"
-	s += "\n[color=%s]%s[/color]" % [UI.hexc(UI.C_SUB), note]
 	return s
 
 
@@ -432,20 +564,31 @@ func _add_plan_buttons(cyc: Dictionary) -> void:
 		b.disabled = not Game.can_reroll()
 		_ctrl_buttons.add_child(b)
 	if rel.has("R32"):
-		var b := UI.button("歩数+2（A1）追加%d歩" % cyc["b"], func():
+		var b := UI.button("歩数+%d（A%d）追加%d歩" % [Game.r32_steps(), Game.r32_cost(), cyc["b"]], func():
 			Game.buy_step()
 			Sfx.play("buy"), 14)
 		b.disabled = not Game.can_buy_step()
 		if rel.has("R39"):
-			b.tooltip_text = "R39所持中は上限3歩。上限を超えた分（振り直し後を含む）は返金されません。"
+			b.tooltip_text = "R39所持中は上限%d歩。上限を超えた分（振り直し後を含む）は返金されません。" % Logic.val("R39", "max_steps")
 		_ctrl_buttons.add_child(b)
 	if rel.has("R19"):
 		var b := UI.button("開始地をえらぶ" if not _r35_mode else "開始地をクリック…", func():
 			_r35_mode = not _r35_mode
 			refresh(), 14)
 		_ctrl_buttons.add_child(b)
-	var go := UI.button("  ここにする  ", _on_confirm, 18)
-	_ctrl_buttons.add_child(go)
+	if _r35_mode:
+		var hint := PanelContainer.new()
+		hint.add_theme_stylebox_override("panel", UI.flat(Color("0c1626", 0.92), UI.C_GOLD, 2, 8, 8))
+		hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var hl := UI.label("開始地にするポーズを\nクリックしてください", 16, UI.C_GOLD)
+		hl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		hint.add_child(hl)
+		hint.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		_center_box.add_child(hint)
+	else:
+		var go := UI.button("  ここにする  ", _on_confirm, 20)
+		go.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		_center_box.add_child(go)
 
 
 func _moving_info(cyc: Dictionary) -> String:
@@ -485,11 +628,9 @@ func _refresh_shop() -> void:
 	for c in _shop_box.get_children():
 		c.queue_free()
 	var st := Game.state
-	_shop_head.add_child(UI.label("ショップ", 16, UI.C_YU))
-	var hint := UI.label("最初のレリック1個は無料" if st["first_free"] else "", 14, UI.C_GOLD)
-	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_shop_head.add_child(hint)
-	_shop_head.add_child(UI.label("無料更新権 %d・次回有料 %s" % [st["free_refresh"], UI.num(Game.refresh_cost())], 14, UI.C_SUB))
+	var title := UI.label("ショップ", 16, UI.C_YU)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_shop_head.add_child(title)
 	var rb_text := "無料で更新" if st["free_refresh"] > 0 else "更新（%s）" % UI.num(Game.refresh_cost())
 	var rb := UI.button(rb_text, func():
 		Game.refresh_shop()
@@ -574,10 +715,15 @@ func _relic_card(i: int) -> Control:
 	return card
 
 
+func _r39_r40_g() -> String:
+	return Logic.fmt_num(1.0 + Logic.val("R39", "global_mult") + Logic.val("R40", "global_mult"))
+
+
 func _combo_warning(id: String) -> String:
 	var owned: Array = Game.state["relics"]
 	if (id == "R39" and owned.has("R40")) or (id == "R40" and owned.has("R39")):
-		return "\n[color=%s]【注意】R39とR40を併用すると、最大3歩で全訪問がゼロ報酬となり、おさかな報酬は常に0です（G=4）。[/color]" % UI.hexc(UI.C_BAD)
+		return "\n[color=%s]【注意】R39とR40を併用すると、最大%d歩で全訪問がゼロ報酬となり、おさかな報酬は常に0です（G=%s）。[/color]" % [
+			UI.hexc(UI.C_BAD), Logic.val("R39", "max_steps"), _r39_r40_g()]
 	return ""
 
 
@@ -665,13 +811,17 @@ func _refresh_owned() -> void:
 	var st := Game.state
 	var owned: Array = st["relics"]
 	_owned_head.text = "レリック %d/%d" % [owned.size(), Game.slots()]
-	for i in Game.slots():
+	_owned_slots.clear()
+	# 枠を超えた分（デバッグで追加したもの）は赤枠で表示する
+	for i in maxi(Game.slots(), owned.size()):
 		var slot := PanelContainer.new()
 		slot.custom_minimum_size = Vector2(40, 40)
 		var sel: bool = i < owned.size() and owned[i] == _selected_relic
-		slot.add_theme_stylebox_override("panel", UI.flat(Color("0d1a2b"), UI.C_GOLD if sel else Color("2a405a"), 2, 4, 2))
+		var border := UI.C_GOLD if sel else (UI.C_BAD if i >= Game.slots() else Color("2a405a"))
+		slot.add_theme_stylebox_override("panel", UI.flat(Color("0d1a2b"), border, 2, 4, 2))
 		if i < owned.size():
 			var id: String = owned[i]
+			_owned_slots[id] = slot
 			slot.add_child(UI.icon_rect(UI.relic_icon(id), 32))
 			slot.mouse_filter = Control.MOUSE_FILTER_STOP
 			slot.gui_input.connect(func(ev: InputEvent):
@@ -738,11 +888,11 @@ func _mark_text() -> String:
 		names.append(D.pose_name(p))
 	var rel: Array = c["relics"]
 	var s := "[color=%s]共通マーク（%d）[/color]：%s\n訪問ごとに訪問倍率%s" % [UI.hexc(UI.C_GOLD), names.size(), "、".join(names),
-		"+3.0（R38で置換）" if rel.has("R38") else "+0.5"]
+		"+%s（R38で置換）" % Logic.fmt_num(Logic.val("R38", "mark_bonus")) if rel.has("R38") else "+0.5"]
 	var extra := []
-	if rel.has("R08"): extra.append("R08：1回以上訪問でA+1")
+	if rel.has("R08"): extra.append("R08：1回以上訪問でA+%d" % Logic.val("R08", "aqua"))
 	if rel.has("R35"): extra.append("R35：訪問した異なるマーク数だけ次回歩数+")
-	if rel.has("R21"): extra.append("R21：訪問したマークのポーズ基礎+6（再訪問は対象外）")
+	if rel.has("R21"): extra.append("R21：訪問したマークのポーズ基礎+%s（再訪問は対象外）" % Logic.fmt_num(Logic.val("R21", "growth")))
 	if rel.has("R36"): extra.append("R36：マークで移動を終えたら的中扱い")
 	if rel.has("R38"): extra.append("R38：未マークへの訪問報酬は0")
 	if not extra.is_empty():
@@ -789,7 +939,8 @@ func _on_node_clicked(p: int) -> void:
 func _on_roll() -> void:
 	Game.start_cycle()
 	Sfx.play("dice")
-	_dice_anim = 0.5 / _speed()
+	_start_dice_anim()
+	_glow_after_dice = true
 	_char_pose = Game.state["cur"]
 	refresh()
 	_plan_tutorials()
@@ -798,7 +949,8 @@ func _on_roll() -> void:
 func _on_reroll() -> void:
 	Game.reroll()
 	Sfx.play("dice")
-	_dice_anim = 0.5 / _speed()
+	_start_dice_anim()
+	_glow_after_dice = true
 	refresh()
 	if Game.cyc()["n0"] == 0:
 		_queue_tut("t8")
@@ -871,6 +1023,7 @@ func _start_moving() -> void:
 		if not _skip:
 			Sfx.play("step")
 			_float_reward(visits[i - 1])
+			_float_relics(st["to"], _step_relics(c, i - 1, visits[i - 1]))
 		refresh()
 	_moving_running = false
 	if not _skip:
@@ -898,6 +1051,119 @@ func _float_reward(v: Dictionary) -> void:
 	tw.tween_property(l, "position:y", l.position.y - 30, 2.0 / _speed())
 	tw.tween_property(l, "modulate:a", 0.0, 2.0 / _speed()).set_delay(1.0 / _speed())
 	tw.chain().tween_callback(l.queue_free)
+
+
+# ---------------------------------------------------------------- レリック発動演出
+
+## i 歩目（0始まり）の訪問で発動したレリック
+func _step_relics(c: Dictionary, i: int, v: Dictionary) -> Array:
+	var rel: Array = c["relics"]
+	var steps: Array = c["route"]["steps"]
+	var st: Dictionary = steps[i]
+	var out := []
+	for m in _relic_re.search_all(v["parts"] + " " + v["zero"]):
+		out.append(m.get_string())
+	if v["mark"] and rel.has("R38"):
+		out.append("R38")
+	if st["forced"]:
+		out.append("R04" if i == 0 and rel.has("R04") else "R18")
+	if st["r09"]:
+		out.append("R09")
+	if st["extra"] and (i == 0 or not steps[i - 1]["extra"]):
+		out.append("R34")
+	if i == steps.size() - 1 and c["route"]["stop"] == "r16":
+		out.append("R16")
+	return _unique_owned(out, rel)
+
+
+## サイクル全体で発動したレリック（精算表示用）
+func _cycle_relics(rep: Dictionary, c: Dictionary) -> Array:
+	var rel: Array = c["relics"]
+	var out := []
+	for i in c["route"]["steps"].size():
+		out.append_array(_step_relics(c, i, rep["visits"][i]))
+	for it in rep["a_items"]:
+		out.append(str(it[0]).get_slice(" ", 0))
+	for it in rep["g_items"]:
+		out.append(it[0])
+	if rep["hit"]:
+		out.append("R11")
+		if rep["end"] != c["q"]:
+			out.append("R36")
+	out.append_array(["R37", "R39", "R40"])
+	if rep.get("r33_used", false):
+		out.append("R33")
+	return _unique_owned(out, rel)
+
+
+## 所持中のものだけを所持順に並べる
+func _unique_owned(ids: Array, rel: Array) -> Array:
+	var out := []
+	for id in rel:
+		if ids.has(id):
+			out.append(id)
+	return out
+
+
+func _glow_dice_relics() -> void:
+	var c := Game.cyc()
+	if c.is_empty():
+		return
+	var ids := ["R05", "R06", "R31"]
+	if c["Mprev"] > 0:
+		ids.append("R35")
+	_glow_relics(_unique_owned(ids, c["relics"]))
+
+
+func _glow_relics(ids: Array) -> void:
+	if ids.is_empty():
+		return
+	for id in ids:
+		_relic_glow[id] = GLOW_TIME
+	Sfx.play("relic")
+
+
+## 所持枠を光らせ、拡大したアイコンを重ねる
+func _draw_glow() -> void:
+	for id in _relic_glow:
+		var slot: Control = _owned_slots.get(id)
+		if not is_instance_valid(slot) or not slot.is_visible_in_tree():
+			continue
+		var t: float = clampf(_relic_glow[id] / GLOW_TIME, 0.0, 1.0)
+		var rect := Rect2(slot.global_position - _glow_layer.global_position, slot.size)
+		var ring := rect.grow(2.0 + (1.0 - t) * 10.0)
+		var sb := UI.flat(Color(UI.C_GOLD, 0.25 * t), Color(UI.C_GOLD, t), 3, 6, 0)
+		_glow_layer.draw_style_box(sb, ring)
+		var pop := 1.0 + 0.35 * sin(PI * minf(1.0, (1.0 - t) * 2.0))
+		var icon := Rect2(rect.get_center() - Vector2(16, 16) * pop, Vector2(32, 32) * pop)
+		_glow_layer.draw_texture_rect(UI.relic_icon(id), icon, false)
+
+
+## 訪問先の上に発動レリックのアイコンを浮かべる
+func _float_relics(p: int, ids: Array) -> void:
+	if ids.is_empty():
+		return
+	_glow_relics(ids)
+	var w := ids.size() * 34 - 4
+	var c := net.position + net.node_center(p)
+	var base := c + Vector2(-w / 2.0, -96)
+	if base.y < NET_RECT.position.y + 30:
+		base.y = c.y + NetworkView.R + 26
+	base.x = clampf(base.x, NET_RECT.position.x + 6, NET_RECT.end.x - 6 - w)
+	for k in ids.size():
+		var box := PanelContainer.new()
+		box.add_theme_stylebox_override("panel", UI.flat(Color("2a2410"), UI.C_GOLD, 2, 6, 2))
+		box.add_child(UI.icon_rect(UI.relic_icon(ids[k]), 26))
+		box.position = base + Vector2(k * 34, 0)
+		box.pivot_offset = Vector2(15, 15)
+		box.scale = Vector2(0.3, 0.3)
+		_float_layer.add_child(box)
+		var tw := box.create_tween()
+		tw.tween_property(box, "scale", Vector2.ONE, 0.2 / _speed()).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.set_parallel()
+		tw.tween_property(box, "position:y", box.position.y - 16, 1.6 / _speed())
+		tw.tween_property(box, "modulate:a", 0.0, 1.0 / _speed()).set_delay(0.8 / _speed())
+		tw.chain().tween_callback(box.queue_free)
 
 
 func _on_settled() -> void:
@@ -980,7 +1246,7 @@ func _build_swap() -> void:
 	r.custom_minimum_size = Vector2(0, 110)
 	var t := "購入：" + UI.relic_text(id).replace("\n", "　", ) + "\n入れ替えて破棄するレリックを選んでください（購入と同時に確定、返金なし）。"
 	if id in ["R39", "R40"] or Game.state["relics"].has("R39") or Game.state["relics"].has("R40"):
-		t += "\n[color=%s]R39とR40を併用すると、おさかな報酬は常に0になります（G=4）。[/color]" % UI.hexc(UI.C_BAD)
+		t += "\n[color=%s]R39とR40を併用すると、おさかな報酬は常に0になります（G=%s）。[/color]" % [UI.hexc(UI.C_BAD), _r39_r40_g()]
 	r.text = t
 	v.add_child(r)
 	var grid := GridContainer.new()
@@ -1013,13 +1279,13 @@ func _build_r33() -> void:
 	var r := UI.rich(16)
 	r.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	r.text = "終点：[b]%s[/b]　予想：%s\n現在の結果：[color=%s]はずれ[/color]\n\nアクアマリンを [b]%d個[/b] 支払って的中扱いにできます（所持 %d → %d）。\n終点・経路は変わりません。\n\nおさかな報酬：はずれのまま %s ／ 的中化後 [color=%s]%s[/color]" % [
-		D.pose_name(c["route"]["end"]), D.pose_name(c["q"]), UI.hexc(UI.C_BAD), D.R33_COST, Game.state["A"], Game.state["A"] - D.R33_COST,
+		D.pose_name(c["route"]["end"]), D.pose_name(c["q"]), UI.hexc(UI.C_BAD), Game.r33_cost(), Game.state["A"], Game.state["A"] - Game.r33_cost(),
 		UI.num(miss["F"]), UI.hexc(UI.C_GOLD), UI.num(hit["F"])]
 	v.add_child(r)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_END
 	row.add_theme_constant_override("separation", 10)
-	row.add_child(UI.button("使う（A%d）" % D.R33_COST, func():
+	row.add_child(UI.button("使う（A%d）" % Game.r33_cost(), func():
 		Game.r33_choose(true)
 		_on_settled()))
 	row.add_child(UI.button("使わない", func():
@@ -1038,11 +1304,42 @@ func _build_report() -> void:
 	r.text = _report_text(rep, c)
 	v.add_child(r)
 	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_END
+	row.add_theme_constant_override("separation", 6)
+	var ids := _cycle_relics(rep, c)
+	if not ids.is_empty():
+		row.add_child(UI.label("発動したレリック", 14, UI.C_GOLD))
+		for k in ids.size():
+			row.add_child(_report_relic_icon(ids[k], k))
+	var sp := Control.new()
+	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(sp)
 	row.add_child(UI.button("  つぎへ  ", _close_report, 18))
 	v.add_child(row)
 	_queue_tut("t5")
 	_queue_tut("t6")
+
+
+## 精算画面の発動レリック：順番にぽんっと出す
+func _report_relic_icon(id: String, k: int) -> Control:
+	var holder := Control.new()
+	holder.custom_minimum_size = Vector2(36, 36)
+	holder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	holder.mouse_filter = Control.MOUSE_FILTER_STOP
+	holder.tooltip_text = "%s %s\n%s" % [id, D.relic_name(id), D.relic_effect(id)]
+	var box := PanelContainer.new()
+	box.add_theme_stylebox_override("panel", UI.flat(Color("2a2410"), UI.C_GOLD, 2, 6, 1))
+	box.add_child(UI.icon_rect(UI.relic_icon(id), 30))
+	box.size = Vector2(36, 36)
+	box.pivot_offset = Vector2(18, 18)
+	box.scale = Vector2.ZERO
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(box)
+	var delay := (0.25 + 0.15 * k) / _speed()
+	var tw := box.create_tween()
+	tw.tween_interval(delay)
+	tw.tween_callback(func(): Sfx.play("relic"))
+	tw.tween_property(box, "scale", Vector2.ONE, 0.25 / _speed()).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	return holder
 
 
 func _report_text(rep: Dictionary, c: Dictionary) -> String:
@@ -1053,10 +1350,7 @@ func _report_text(rep: Dictionary, c: Dictionary) -> String:
 	if rep.get("r33_used", false):
 		res += "（R33で的中化）"
 	s += "[b]%s[/b]　開始 %s → 終点 %s　予想 %s\n" % [res, D.pose_name(c["s"]), D.pose_name(rep["end"]), D.pose_name(c["q"])]
-	var path := [D.pose_name(c["s"])]
-	for st in c["route"]["steps"]:
-		path.append(("[color=%s]" % UI.hexc(UI.C_LINK) + D.pose_name(st["to"]) + "[/color]") if st["extra"] else D.pose_name(st["to"]))
-	s += "[color=%s]経路：%s\n%s[/color]\n\n" % [sub, " → ".join(path), Logic.stop_reason_text(c["route"]["stop"])]
+	s += "[color=%s]%s[/color]\n\n" % [sub, Logic.stop_reason_text(c["route"]["stop"])]
 	if not rep["visits"].is_empty():
 		s += "[table=6][cell][b]歩[/b]  [/cell][cell][b]ポーズ[/b]  [/cell][cell][b]基礎[/b]  [/cell][cell][b]倍率J[/b]  [/cell][cell][b]報酬V[/b]  [/cell][cell][b]内訳・ゼロ化理由[/b][/cell]"
 		for vi in rep["visits"]:
@@ -1070,8 +1364,8 @@ func _report_text(rep: Dictionary, c: Dictionary) -> String:
 		s += "[/table]\n"
 	else:
 		s += "移動なし（訪問報酬 0）\n"
-	s += "\nS=%s　G=%d　M=%d　→　F=floor(S×G×M)=[color=%s][b]%s[/b][/color]\n" % [
-		Logic.fmt_num(snappedf(rep["S"], 0.01)), rep["G"], rep["M"], gold, UI.num(rep["F"])]
+	s += "\n[table=2][cell]訪問報酬合計　[/cell][cell]%s[/cell][cell]全体倍率　[/cell][cell]x%.1f[/cell][cell]的中倍率　[/cell][cell]x%.1f[/cell][cell][b]獲得報酬[/b]　[/cell][cell][color=%s][b]%s[/b][/color][/cell][/table]\n" % [
+		Logic.fmt_num(snappedf(rep["S"], 0.01)), float(rep["G"]), float(rep["M"]), gold, UI.num(rep["F"])]
 	s += "おさかな %s → %s\n" % [UI.num(c["W0"]), UI.num(c["W0"] + rep["F"])]
 	var a_parts := []
 	for it in rep["a_items"]:
@@ -1084,7 +1378,6 @@ func _report_text(rep: Dictionary, c: Dictionary) -> String:
 		for it in rep["g_items"]:
 			g_parts.append("%s %s+%s" % [it[0], D.pose_name(it[1]), Logic.fmt_num(it[2])])
 		s += "基礎値成長：%s\n" % "、".join(g_parts)
-	s += "[color=%s]次サイクル：跨ぎ回数Kprev=%d、マーク訪問数Mprev=%d[/color]\n" % [sub, rep["crosses"], rep["mark_distinct"]]
 	var ended: Dictionary = Game.state["ended"]
 	if rep.get("round_adv", false):
 		s += "\n[color=%s][b]ラウンド達成！[/b] 次は %s（目標 %s）。レリック枠+2、無料更新権+1。[/color]" % [
@@ -1135,12 +1428,13 @@ func _show_next_tut() -> void:
 		var zs := []
 		if rel.has("R37"): zs.append("R37：はずれ時のおさかな報酬は0")
 		if rel.has("R38"): zs.append("R38：未マークへの訪問報酬は0")
-		if rel.has("R39"): zs.append("R39：全移動の上限は3歩")
-		if rel.has("R40"): zs.append("R40：1〜3歩目の訪問報酬は0")
+		if rel.has("R39"): zs.append("R39：全移動の上限は%d歩" % Logic.val("R39", "max_steps"))
+		if rel.has("R40"): zs.append("R40：1〜%d歩目の訪問報酬は0" % Logic.val("R40", "zero_steps"))
 		if not zs.is_empty():
 			text += "\n[color=%s]所持中のゼロ報酬条件：\n%s[/color]" % [UI.hexc(UI.C_BAD), "\n".join(zs)]
 	if key == "t7" and rel.has("R38"):
-		text += "\n[color=%s]R38所持中は+0.5ではなく+3.0に置換されます（未マークは報酬0）。[/color]" % UI.hexc(UI.C_GOLD)
+		text += "\n[color=%s]R38所持中は+0.5ではなく+%.1fに置換されます（未マークは報酬0）。[/color]" % [
+			UI.hexc(UI.C_GOLD), Logic.val("R38", "mark_bonus")]
 	_dialog("チュートリアル", text, [["OK", func():
 		Game.mark_tut(key)
 		_tut_queue.pop_front()

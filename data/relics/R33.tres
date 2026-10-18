@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="RelicData" format=3 uid="uid://ck1thua11irns"]
+
+[ext_resource type="Script" uid="uid://b4srh60a5xyui" path="res://scripts/relic_data.gd" id="1_8pt3t"]
+
+[resource]
+script = ExtResource("1_8pt3t")
+id = "R33"
+display_name = "運命の結晶"
+rarity = 2
+values = Dictionary[String, float]({
+"cost": 5.0
+})
+description = "移動終了後、はずれならアクアマリンを$cost$個消費して的中扱いにできる"
+note = "今回の獲得予定Aは使えません。"

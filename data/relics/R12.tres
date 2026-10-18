@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="RelicData" format=3]
+
+[ext_resource type="Script" path="res://scripts/relic_data.gd" id="1_yhkm1"]
+
+[resource]
+script = ExtResource("1_yhkm1")
+id = "R12"
+display_name = "ねむりの香り"
+values = Dictionary[String, float]({
+"bonus": 0.4
+})
+description = "ゆったりへの訪問倍率+$bonus$"

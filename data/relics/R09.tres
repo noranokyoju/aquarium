@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="RelicData" format=3 uid="uid://qsym4ot8cjew"]
+
+[ext_resource type="Script" uid="uid://b4srh60a5xyui" path="res://scripts/relic_data.gd" id="1_0udjp"]
+
+[resource]
+script = ExtResource("1_0udjp")
+id = "R09"
+display_name = "潮の鉱脈"
+values = Dictionary[String, float]({
+"aqua": 1.0,
+"chance": 50.0
+})
+description = "跨ぎ移動ごとに独立$chance$%で追加アクアマリン$aqua$個。発動回数の上限なし"

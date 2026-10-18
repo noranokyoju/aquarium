@@ -24,6 +24,7 @@ func _ready() -> void:
 	_sounds["hit"] = _tone([784.0, 988.0, 1175.0, 1568.0], 0.5, 0.25)
 	_sounds["miss"] = _tone([392.0, 330.0], 0.3, 0.2)
 	_sounds["clear"] = _tone([523.0, 659.0, 784.0, 1047.0, 1319.0], 0.9, 0.25)
+	_sounds["relic"] = _tone([1319.0, 1760.0], 0.14, 0.2)
 	for i in 6:
 		var p := AudioStreamPlayer.new()
 		p.bus = "SE"
