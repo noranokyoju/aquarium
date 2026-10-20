@@ -193,7 +193,7 @@ func start_cycle() -> void:
 	var relics: Array = state["relics"].duplicate()
 	var cyc := {
 		"W0": state["W"], "B": state["B"].duplicate(), "relics": relics, "H": state["H"],
-		"Kprev": state["Kprev"], "Mprev": state["Mprev"], "s": state["cur"], "q": state["cur"],
+		"Kprev": state["Kprev"], "Mprev": state["Mprev"], "s": state["cur"], "q": -1,
 		"marks": Logic.draw_marks(Logic.mark_count(relics, state["Kprev"]), relics, rng),
 		"dice": _roll(relics), "rerolled": false, "b": 0, "n0": 0, "route": {}, "anim": 0,
 		"hit": false, "r33_used": false,
@@ -267,8 +267,12 @@ func set_guess(p: int) -> void:
 		_commit()
 
 
+func has_guess() -> bool:
+	return phase() == "plan" and int(cyc()["q"]) >= 0
+
+
 func confirm_plan() -> void:
-	if phase() != "plan":
+	if not has_guess():
 		return
 	var c := cyc()
 	c["route"] = Logic.generate_route(c, rng)

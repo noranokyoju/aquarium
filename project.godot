@@ -21,15 +21,18 @@ buses/default_bus_layout="res://resources/default_bus_layout.tres"
 
 [autoload]
 
-Sfx="*res://scripts/sfx.gd"
 Game="*res://scripts/game.gd"
-Settings="*res://scripts/settings.gd"
+Sfx="*res://scripts/sfx.gd"
 
 [display]
 
 window/size/viewport_width=1280
 window/size/viewport_height=720
 window/stretch/mode="canvas_items"
+
+[editor]
+
+movie_writer/movie_file="/Users/user/Movies/Godot/movie.avi"
 
 [gui]
 

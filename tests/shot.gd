@@ -53,9 +53,17 @@ func _ready() -> void:
 	await _shot("04b_r19")
 	main._game._r35_mode = false
 	main._game.refresh()
+	main._game.net.hovered = 6
+	main._game._on_node_clicked(6)
+	await get_tree().create_timer(0.1).timeout
+	await _shot("04c_guess")
+	main._game.net.hovered = -1
+	Game.cyc()["n0"] = 4
 	main._game._on_confirm()
 	await get_tree().create_timer(1.15).timeout
 	await _shot("05_moving")
+	await get_tree().create_timer(1.9).timeout
+	await _shot("05b_tally")
 	main._game._skip = true
 	await get_tree().create_timer(1.0).timeout
 	await _shot("06_report")
@@ -65,6 +73,7 @@ func _ready() -> void:
 	Game.state["W"] = 0
 	main._game._on_roll()
 	await get_tree().create_timer(1.2).timeout
+	Game.set_guess(0)
 	main._game._on_confirm()
 	main._game._skip = true
 	await get_tree().create_timer(1.0).timeout

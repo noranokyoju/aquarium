@@ -12,6 +12,7 @@ func _ready() -> void:
 	main._game._on_roll()
 	await get_tree().create_timer(0.6).timeout
 	Game.cyc()["n0"] = 6
+	Game.set_guess(0)
 	main._game._on_confirm()
 	await get_tree().create_timer(1.2).timeout
 	var anim: int = Game.cyc()["anim"]

@@ -319,6 +319,11 @@ func test_shop() -> void:
 	g.state["cyc"]["n0"] = Logic.calc_n0(g.state["cyc"], 0)
 	g.buy_step()
 	check(g.state["A"] == 2 and g.state["cyc"]["b"] == 2 and g.state["cyc"]["n0"] == 5, "R32 +2 steps")
+	# 予想は未選択で始まり、選ぶまで確定できない
+	check(g.state["cyc"]["q"] == -1 and not g.has_guess(), "guess starts unselected")
+	g.confirm_plan()
+	check(g.phase() == "plan", "cannot confirm without guess")
+	g.set_guess(3)
 	g.confirm_plan()
 	g.finish_moving()
 	if g.phase() == "report":
@@ -332,6 +337,7 @@ func test_shop() -> void:
 	check(g.can_buy_step(), "R32 R39 n0=2 can buy")
 	g.buy_step()
 	check(g.state["cyc"]["n0"] == 3 and not g.can_buy_step(), "R32 R39 capped at 3")
+	g.set_guess(0)
 	g.confirm_plan()
 	g.finish_moving()
 	if g.phase() == "report":
@@ -354,6 +360,7 @@ func test_shop() -> void:
 	g.start_cycle()
 	g.state["cyc"]["dice"] = [1]
 	g.state["cyc"]["n0"] = 0
+	g.set_guess(0)
 	g.confirm_plan()
 	g.finish_moving()
 	check(g.state["r"] == 2 and g.state["c"] == 0 and g.state["free_refresh"] == 1 and g.slots() == 6, "round adv")
@@ -363,6 +370,7 @@ func test_shop() -> void:
 	g.state["W"] = 1500
 	g.start_cycle()
 	g.state["cyc"]["n0"] = 0
+	g.set_guess(0)
 	g.confirm_plan()
 	g.finish_moving()
 	check(not g.state["ended"].is_empty() and not g.state["ended"]["cleared"], "fail at round end")
@@ -375,6 +383,7 @@ func test_shop() -> void:
 	g2.settings = g.settings
 	check(g2.load_game(), "load")
 	check(g2.state["cyc"]["dice"] == dice and g2.state["cyc"]["marks"] == marks and g2.phase() == "plan", "resume keeps dice")
+	g2.set_guess(0)
 	g2.confirm_plan()
 	var path: Array = g2.state["cyc"]["route"]["steps"].duplicate(true)
 	var g3 = GameScript.new()
