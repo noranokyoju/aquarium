@@ -71,6 +71,7 @@ func _gui_input(event: InputEvent) -> void:
 		if p != hovered:
 			hovered = p
 			node_hovered.emit(p)
+		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if interactive and p >= 0 else Control.CURSOR_ARROW
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var p := node_at(event.position)
 		if p >= 0:
@@ -107,6 +108,8 @@ func _draw() -> void:
 
 	for p in D.POSE_COUNT:
 		_draw_node(p, f)
+	if interactive and hovered >= 0:
+		_draw_click_hint(hovered, f)
 
 
 func _link_color(p: int, kind: String) -> Color:
@@ -297,6 +300,19 @@ func _draw_node(p: int, f: Font) -> void:
 			pp = c + Vector2(-R - 6 - pw, 6)
 		draw_rect(Rect2(pp + Vector2(-3, -14), Vector2(pw + 6, 18)), Color(0.03, 0.06, 0.1, 0.85))
 		draw_string(f, pp, ptxt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, col)
+
+
+## 選択できるポーズの上に「クリックで選択」を出す（マークがあればその上）
+func _draw_click_hint(p: int, f: Font) -> void:
+	var txt := "クリックで選択"
+	var tw := f.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	var c := node_center(p)
+	var by := c.y - R - (34.0 if marks.has(p) else 10.0)
+	var x := clampf(c.x - tw / 2.0, 6.0, size.x - tw - 6.0)
+	var bob := 2.0 * sin(_time * 5.0)
+	var rect := Rect2(Vector2(x - 5, by - 14 + bob), Vector2(tw + 10, 19))
+	draw_style_box(UI.flat(Color(0.05, 0.08, 0.13, 0.92), UI.C_GOLD, 1, 4, 0), rect)
+	draw_string(f, Vector2(x, by + bob), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UI.C_GOLD)
 
 
 func _badge_width(txt: String, f: Font) -> float:

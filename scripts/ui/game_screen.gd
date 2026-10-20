@@ -57,6 +57,16 @@ var _relic_glow := {}        # レリックID → 発動演出の残り秒
 var _owned_slots := {}       # レリックID → 所持枠（再構築のたびに更新）
 var _glow_after_dice := false
 var _relic_re := RegEx.create_from_string("R\\d\\d")
+var _go_button: Button        # 作戦中の「ここにする」（予想選択後に強調）
+var _go_pop := 0.0
+## 移動中の合計報酬表示
+var _tally_box: VBoxContainer
+var _tally_num: Label
+var _tally_lines: VBoxContainer
+var _tally_val := 0.0
+var _tally_tw: Tween
+var _tally_running := false  # 倍率演出が終わるまで精算画面を出さない
+var _tally_gen := 0
 
 
 func _ready() -> void:
@@ -155,7 +165,38 @@ func _build() -> void:
 	_center_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_center_box)
 
-	# R19 開始地選択中：ネットワーク図以外をグレーアウト
+	# サイコロの下：移動中の合計報酬
+	_tally_box = VBoxContainer.new()
+	_tally_box.size = Vector2(_center_box.size.x, 0)
+	_tally_box.position = _center_box.position + Vector2(0, DICE_BUTTON_H + 8)
+	_tally_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_tally_box.visible = false
+	add_child(_tally_box)
+	var tp := PanelContainer.new()
+	tp.add_theme_stylebox_override("panel", UI.flat(Color("0c1626", 0.92), UI.C_GOLD.darkened(0.3), 2, 8, 6))
+	tp.custom_minimum_size = Vector2(150, 0)
+	tp.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	tp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_tally_box.add_child(tp)
+	var tv := VBoxContainer.new()
+	tv.add_theme_constant_override("separation", 0)
+	tp.add_child(tv)
+	var th := UI.label("合計報酬", 13, UI.C_SUB)
+	th.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tv.add_child(th)
+	var trow := HBoxContainer.new()
+	trow.alignment = BoxContainer.ALIGNMENT_CENTER
+	trow.add_theme_constant_override("separation", 2)
+	tv.add_child(trow)
+	trow.add_child(UI.icon_rect(UI.icon_fish(), 22))
+	_tally_num = UI.label("0", 22, UI.C_GOLD)
+	_tally_num.resized.connect(func(): _tally_num.pivot_offset = _tally_num.size / 2.0)
+	trow.add_child(_tally_num)
+	_tally_lines = VBoxContainer.new()
+	_tally_lines.add_theme_constant_override("separation", 0)
+	tv.add_child(_tally_lines)
+
+	# 作戦中（予想・R19 開始地選択）：ネットワーク図以外をグレーアウト
 	_focus_layer = Control.new()
 	_focus_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_focus_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -169,7 +210,7 @@ func _build() -> void:
 		dim.position = rect.position
 		dim.size = rect.size
 		dim.gui_input.connect(func(ev: InputEvent):
-			if ev is InputEventMouseButton and ev.pressed:
+			if ev is InputEventMouseButton and ev.pressed and _r35_mode:
 				_r35_mode = false
 				refresh())
 		_focus_layer.add_child(dim)
@@ -259,8 +300,14 @@ func enter() -> void:
 	var st := Game.state
 	_char_pose = st["cur"]
 	var ph := Game.phase()
-	if ph == "moving" or ph == "r33" or ph == "report":
+	_tally_gen += 1
+	_tally_running = false
+	if ph == "moving" or ph == "r33":
 		_char_pose = _anim_pos()
+		_tally_reset(_tally_partial(Game.cyc()["anim"]))
+	elif ph == "report":
+		_char_pose = _anim_pos()
+		_tally_reset(st["report"]["F"])
 	refresh()
 	if ph == "idle":
 		_queue_tut("t1")
@@ -297,9 +344,17 @@ func _process(delta: float) -> void:
 		_glow_layer.queue_redraw()
 	if _focus_layer.visible:
 		_focus_border.modulate.a = 0.6 + 0.4 * sin(_time * 4.0)
+	# 予想を選んだら「ここにする」を脈打たせる（選んだ直後は大きく弾ませる）
+	if is_instance_valid(_go_button) and not _go_button.disabled:
+		_go_pop = maxf(0.0, _go_pop - delta * 3.0)
+		var wave := 0.5 + 0.5 * sin(_time * 5.0)
+		var s := 1.0 + 0.06 * wave + 0.3 * _go_pop * _go_pop
+		_go_button.pivot_offset = _go_button.size / 2.0
+		_go_button.scale = Vector2(s, s)
+		_go_button.modulate = Color.WHITE.lerp(Color(1.3, 1.22, 1.0), wave)
 	# ゆらゆら
 	_char_tex.position.y = 74 + sin(_time * 1.6) * 4.0
-	if Game.has_run() and absf(_shown_w - Game.state["W"]) > 0.5 and (_w_tween == null or not _w_tween.is_running()):
+	if Game.has_run() and not _tally_running and absf(_shown_w - Game.state["W"]) > 0.5 and (_w_tween == null or not _w_tween.is_running()):
 		_shown_w = Game.state["W"]
 		_refresh_top()
 
@@ -324,6 +379,9 @@ func _speed() -> float:
 
 
 func _refresh_top() -> void:
+	# 倍率演出中は精算前の表示のまま止める（結果を先に見せない）
+	if _tally_running and _top.get_child_count() > 0:
+		return
 	for c in _top.get_children():
 		c.queue_free()
 	var st := Game.state
@@ -408,7 +466,7 @@ func _refresh_net() -> void:
 			net.probs = []
 			if ph != "moving":
 				net.show_forced = false
-	net.interactive = ph == "plan"
+	net.interactive = ph == "plan" and _dice_anim <= 0.0
 	net.queue_redraw()
 
 
@@ -420,6 +478,7 @@ func _refresh_controls() -> void:
 	for c in _center_box.get_children():
 		c.queue_free()
 	_dice_faces.clear()
+	_go_button = null
 	var ph := Game.phase()
 	var st := Game.state
 	var cyc := Game.cyc()
@@ -444,7 +503,12 @@ func _refresh_controls() -> void:
 	if ph in ["idle", "moving"]:
 		_ctrl_buttons.add_child(UI.button("速度 %s" % _speed_name(), _cycle_speed))
 	_ctrl_info.text = info
-	_focus_layer.visible = ph == "plan" and _r35_mode
+	_tally_box.visible = ph in ["moving", "r33", "report"]
+	# 予想中は操作を通し、R19 開始地選択中だけ外側クリックで取り消す
+	_focus_layer.visible = ph == "plan" and _dice_anim <= 0.0
+	for c in _focus_layer.get_children():
+		if c is ColorRect:
+			c.mouse_filter = Control.MOUSE_FILTER_STOP if _r35_mode else Control.MOUSE_FILTER_IGNORE
 
 
 ## ネットワーク図中央のサイコロ。clickable でなければ回転中・出目表示用（押せない）
@@ -549,8 +613,10 @@ func _plan_info(cyc: Dictionary) -> String:
 	var s := "出目 [b]%s[/b]" % _dice_text(cyc["dice"])
 	if not mods.is_empty():
 		s += "（%s）" % "、".join(mods)
+	var q: int = cyc["q"]
 	s += " → 通常予定 [color=%s][b]%d歩[/b][/color]　開始 %s　予想 [color=%s]%s[/color]" % [
-		UI.hexc(UI.C_GOLD), cyc["n0"], D.pose_name(cyc["s"]), UI.hexc(UI.C_GOLD), D.pose_name(cyc["q"])]
+		UI.hexc(UI.C_GOLD), cyc["n0"], D.pose_name(cyc["s"]), UI.hexc(UI.C_GOLD if q >= 0 else UI.C_SUB),
+		D.pose_name(q) if q >= 0 else "未選択"]
 	if Logic.is_forced_step(1, rel) and cyc["n0"] > 0:
 		s += "　[color=%s]1歩目は強制跨ぎ[/color]" % UI.hexc(UI.C_GOLD)
 	return s
@@ -577,18 +643,31 @@ func _add_plan_buttons(cyc: Dictionary) -> void:
 			refresh(), 14)
 		_ctrl_buttons.add_child(b)
 	if _r35_mode:
-		var hint := PanelContainer.new()
-		hint.add_theme_stylebox_override("panel", UI.flat(Color("0c1626", 0.92), UI.C_GOLD, 2, 8, 8))
-		hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var hl := UI.label("開始地にするポーズを\nクリックしてください", 16, UI.C_GOLD)
-		hl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		hint.add_child(hl)
-		hint.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		_center_box.add_child(hint)
+		_center_box.add_child(_center_hint("開始地にするポーズを\nクリックしてください"))
 	else:
+		_center_box.add_child(_center_hint("%d歩後の位置を予想しよう" % cyc["n0"]))
 		var go := UI.button("  ここにする  ", _on_confirm, 20)
 		go.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		go.disabled = not Game.has_guess()
+		if go.disabled:
+			go.tooltip_text = "予想するポーズをクリックしてください"
+		else:
+			go.add_theme_stylebox_override("normal", UI.flat(Color("3a3012"), UI.C_GOLD, 3))
+			go.add_theme_stylebox_override("hover", UI.flat(Color("4a3d16"), UI.C_GOLD.lightened(0.3), 3))
+			go.add_theme_color_override("font_color", UI.C_GOLD)
+			_go_button = go
 		_center_box.add_child(go)
+
+
+func _center_hint(text: String) -> PanelContainer:
+	var hint := PanelContainer.new()
+	hint.add_theme_stylebox_override("panel", UI.flat(Color("0c1626", 0.92), UI.C_GOLD, 2, 8, 8))
+	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var hl := UI.label(text, 16, UI.C_GOLD)
+	hl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.add_child(hl)
+	hint.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	return hint
 
 
 func _moving_info(cyc: Dictionary) -> String:
@@ -933,6 +1012,7 @@ func _on_node_clicked(p: int) -> void:
 		_r35_mode = false
 		Game.set_start(p)
 	else:
+		_go_pop = 1.0
 		Game.set_guess(p)
 
 
@@ -991,6 +1071,8 @@ func _confirm_discard(id: String) -> void:
 
 
 func _on_confirm() -> void:
+	if not Game.has_guess():
+		return
 	_r35_mode = false
 	Game.confirm_plan()
 	_start_moving()
@@ -1002,6 +1084,7 @@ func _start_moving() -> void:
 	if _moving_running:
 		return
 	_moving_running = true
+	_tally_running = true
 	_skip = false
 	var c := Game.cyc()
 	var steps: Array = c["route"]["steps"]
@@ -1009,6 +1092,7 @@ func _start_moving() -> void:
 	var visits: Array = preview["visits"]
 	var i: int = c["anim"]
 	_char_pose = _anim_pos()
+	_tally_reset(_tally_partial(i))
 	refresh()
 	while i < steps.size():
 		if not _skip:
@@ -1024,10 +1108,13 @@ func _start_moving() -> void:
 			Sfx.play("step")
 			_float_reward(visits[i - 1])
 			_float_relics(st["to"], _step_relics(c, i - 1, visits[i - 1]))
+			if visits[i - 1]["V"] > 0.0:
+				_tally_to(_tally_val + visits[i - 1]["V"], 0.3)
 		refresh()
 	_moving_running = false
 	if not _skip:
 		await get_tree().create_timer(0.3 / _speed(), false).timeout
+	_tally_to(preview["S"], 0.0)
 	Game.finish_moving()
 	if Game.phase() == "report":
 		_on_settled()
@@ -1166,9 +1253,111 @@ func _float_relics(p: int, ids: Array) -> void:
 		tw.chain().tween_callback(box.queue_free)
 
 
+## 合計報酬の表示（端数は小数第2位まで、カウント中は整数）
+func _fmt_reward(v: float) -> String:
+	var cents := roundi(v * 100.0)
+	var s := UI.num(cents / 100)
+	if cents % 100 != 0:
+		s += (".%02d" % (cents % 100)).trim_suffix("0")
+	return s
+
+
+## 移動済み anim 歩までの訪問報酬の合計
+func _tally_partial(anim: int) -> float:
+	var visits: Array = Game.preview_settlement(false)["visits"]
+	var s := 0.0
+	for k in mini(anim, visits.size()):
+		s += visits[k]["V"]
+	return s
+
+
+func _tally_reset(v: float) -> void:
+	if _tally_tw:
+		_tally_tw.kill()
+	_tally_val = v
+	_tally_num.text = _fmt_reward(v)
+	for c in _tally_lines.get_children():
+		c.queue_free()
+
+
+## 数字を v まで増減させる（dur は標準速度での秒数。スキップ中は即時）
+func _tally_to(v: float, dur: float) -> void:
+	if _tally_tw:
+		_tally_tw.kill()
+	var from := _tally_val
+	_tally_val = v
+	if dur <= 0.0 or _skip:
+		_tally_num.text = _fmt_reward(v)
+		return
+	_tally_tw = create_tween()
+	_tally_tw.tween_method(func(x: float): _tally_num.text = UI.num(int(floor(x))), from, v, dur / _speed())
+	_tally_tw.tween_callback(func(): _tally_num.text = _fmt_reward(v))
+	_pop(_tally_num, 1.3)
+
+
+func _tally_line(text: String, col: Color) -> void:
+	var l := UI.label(text, 16, col)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.resized.connect(func(): l.pivot_offset = l.size / 2.0)
+	_tally_lines.add_child(l)
+	if not _skip:
+		_pop(l, 1.6)
+
+
+func _pop(c: Control, from: float) -> void:
+	c.pivot_offset = c.size / 2.0
+	c.scale = Vector2(from, from)
+	var tw := c.create_tween()
+	tw.tween_property(c, "scale", Vector2.ONE, 0.25 / _speed()).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+## 演出の待ち。途中でタイトルへ戻るなどして中断されたら false
+func _tally_wait(sec: float, gen: int) -> bool:
+	if not _skip:
+		await get_tree().create_timer(sec / _speed(), false).timeout
+	return gen == _tally_gen and is_visible_in_tree()
+
+
+## 移動後の合計報酬に全体倍率・的中倍率を順に掛ける
+func _tally_multipliers(rep: Dictionary, gen: int) -> bool:
+	var v: float = rep["S"]
+	_tally_to(v, 0.0)
+	var g: float = rep["G"]
+	if not is_equal_approx(g, 1.0):
+		if not await _tally_wait(0.4, gen):
+			return false
+		v *= g
+		_tally_line("全体倍率 x%.1f" % g, UI.C_LINK)
+		Sfx.play("relic")
+		_tally_to(v, 0.5)
+	if not await _tally_wait(0.4, gen):
+		return false
+	var m: float = rep["M"]
+	if rep["hit"]:
+		_tally_line("%s x%.1f" % ["的中（R33）" if rep.get("r33_used", false) else "的中", m], UI.C_GOLD)
+		Sfx.play("hit")
+	else:
+		_tally_line("はずれ" if is_equal_approx(m, 1.0) else "はずれ x%.1f" % m, UI.C_BAD)
+		Sfx.play("miss")
+	if not is_equal_approx(m, 1.0):
+		v *= m
+		_tally_to(v, 0.5)
+	# 獲得報酬は端数切り捨て
+	if not await _tally_wait(0.6, gen):
+		return false
+	if not is_equal_approx(v, float(rep["F"])):
+		_tally_to(rep["F"], 0.2)
+	return await _tally_wait(0.6, gen)
+
+
 func _on_settled() -> void:
 	var rep: Dictionary = Game.state["report"]
-	Sfx.play("hit" if rep["hit"] else "miss")
+	var gen := _tally_gen
+	_tally_running = true
+	refresh()
+	if not await _tally_multipliers(rep, gen):
+		return
+	_tally_running = false
 	if _w_tween:
 		_w_tween.kill()
 	_w_tween = create_tween()
@@ -1187,7 +1376,7 @@ func _refresh_modal() -> void:
 		kind = "swap"
 	elif ph == "r33":
 		kind = "r33"
-	elif ph == "report":
+	elif ph == "report" and not _tally_running:
 		kind = "report"
 	if kind == _modal_kind:
 		return
@@ -1286,9 +1475,11 @@ func _build_r33() -> void:
 	row.alignment = BoxContainer.ALIGNMENT_END
 	row.add_theme_constant_override("separation", 10)
 	row.add_child(UI.button("使う（A%d）" % Game.r33_cost(), func():
+		_tally_running = true
 		Game.r33_choose(true)
 		_on_settled()))
 	row.add_child(UI.button("使わない", func():
+		_tally_running = true
 		Game.r33_choose(false)
 		_on_settled()))
 	v.add_child(row)
