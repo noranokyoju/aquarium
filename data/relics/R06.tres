@@ -7,7 +7,7 @@ script = ExtResource("1_vkmea")
 id = "R06"
 display_name = "ゆっくりのひれ"
 values = Dictionary[String, float]({
-"cross_weight": 1.0,
+"marks": 2.0,
 "steps": 1.0
 })
-description = "毎サイクル通常歩数-$steps$。全跨ぎリンクの重みを$cross_weight$にする"
+description = "毎サイクル通常歩数-$steps$。マーク数+$marks$。通常歩数は1未満にならない"

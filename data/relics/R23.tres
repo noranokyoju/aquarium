@@ -8,6 +8,6 @@ id = "R23"
 display_name = "ただいまの真珠"
 rarity = 1
 values = Dictionary[String, float]({
-"growth": 12.0
+"growth": 4.0
 })
-description = "開始地と終点が同じなら、今回訪問した異なる全ポーズの基礎値+$growth$を精算後に反映"
+description = "同じサイクル内の同じポーズへの2回目以降の訪問ごとに、そのポーズの基礎値+$growth$を精算後に反映"

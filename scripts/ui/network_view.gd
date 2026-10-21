@@ -98,8 +98,8 @@ func _draw() -> void:
 
 	var forced := show_forced and Logic.is_forced_step(next_step, relics)
 	for p in D.POSE_COUNT:
-		var links := Logic.base_links(p, relics, link_bases)
-		var tw := 0
+		var links := Logic.base_links(p, relics, link_bases, marks)
+		var tw := 0.0
 		for l in links:
 			tw += l["w"]
 		for l in links:
@@ -241,10 +241,10 @@ func _draw_node(p: int, f: Font) -> void:
 	var c := node_center(p)
 	var area := D.area_of(p)
 	var ac := UI.area_color(area)
-	# 現在地のきらめき
+	# 現在地のきらめき（黄色）
 	if p == cur:
 		var pulse := 0.5 + 0.5 * sin(_time * 4.0)
-		draw_circle(c, R + 8 + pulse * 3, Color(ac, 0.18 + 0.12 * pulse))
+		draw_circle(c, R + 8 + pulse * 3, Color(UI.C_GOLD, 0.18 + 0.12 * pulse))
 	draw_circle(c, R, Color("0e1828") if area == 0 else Color("1b1428"))
 	var ring := ac
 	var rw := 3.0
@@ -263,8 +263,8 @@ func _draw_node(p: int, f: Font) -> void:
 	# マーク（真上）
 	if marks.has(p):
 		_draw_mark(c + Vector2(0, -R - 14), p)
-	# 基礎値（左上の丸枠数字）
-	var btxt := Logic.fmt_num(bases[p])
+	# 基礎値（左上の丸枠数字。小数第1位で四捨五入）
+	var btxt := Logic.fmt_num(round(bases[p] * 10.0) / 10.0)
 	var bw := f.get_string_size(btxt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
 	var bc := c + Vector2(-R, -R) * 0.72
 	var br := maxf(10.0, bw / 2.0 + 4.0)

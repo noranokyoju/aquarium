@@ -4,6 +4,7 @@ extends Control
 const D := preload("res://scripts/data.gd")
 const GameScreen := preload("res://scripts/ui/game_screen.gd")
 const DebugRelics := preload("res://scripts/ui/debug_relics.gd")
+const RelicBook := preload("res://scripts/ui/relic_book.gd")
 
 var _title: Control
 var _game: GameScreen
@@ -12,6 +13,7 @@ var _result: Control
 var _settings: Control
 var _confirm: Control
 var _debug: DebugRelics
+var _book: RelicBook
 var _title_msg: Label
 var _continue_btn: Button
 var _screen := ""
@@ -28,6 +30,7 @@ func _ready() -> void:
 	_game = GameScreen.new()
 	_game.open_settings.connect(_open_settings)
 	_game.open_debug.connect(func(): _debug.open())
+	_game.open_book.connect(func(): _book.open())
 	_game.go_title.connect(func(): _show("title"))
 	_game.run_ended.connect(_on_run_ended)
 	add_child(_game)
@@ -43,6 +46,8 @@ func _ready() -> void:
 	_confirm.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_confirm.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_confirm)
+	_book = RelicBook.new()
+	add_child(_book)
 	_debug = DebugRelics.new()
 	add_child(_debug)
 	_show("title")
@@ -69,7 +74,8 @@ func _notification(what: int) -> void:
 
 func _update_pause() -> void:
 	if is_inside_tree():
-		get_tree().paused = _focus_lost or (_settings != null and _settings.visible) or (_debug != null and _debug.visible)
+		get_tree().paused = _focus_lost or (_settings != null and _settings.visible) or (_debug != null and _debug.visible) \
+			or (_book != null and _book.visible)
 
 
 func _show(name: String) -> void:

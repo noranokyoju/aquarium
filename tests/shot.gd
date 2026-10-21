@@ -18,12 +18,10 @@ func _ready() -> void:
 	main._start_new()
 	await _frames(10)
 	await _shot("02_idle_tutorial")
-	for k in ["t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8", "t9"]:
-		Game.mark_tut(k)
-	main._game._tut_queue.clear()
-	for c in main._game._tut_layer.get_children():
-		c.queue_free()
-	Game.state["relics"] = ["R02", "R15", "R17", "R19", "R32", "R03"]
+	Game.mark_tut("done")
+	Game.mark_tut("mark")
+	Game.state["tut"] = ""
+	Game.state["relics"] = ["R02", "R15", "R01", "R19", "R30", "R03"]
 	Game.state["A"] = 5
 	Game.state["W"] = 120
 	Game.state["B"][6] = 30.0

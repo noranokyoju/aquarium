@@ -1,15 +1,10 @@
-[gd_resource type="Resource" script_class="RelicData" format=3 uid="uid://cian5o47ah253"]
+[gd_resource type="Resource" script_class="RelicData" format=3 uid="uid://bt0iimv1vamba"]
 
-[ext_resource type="Script" uid="uid://b4srh60a5xyui" path="res://scripts/relic_data.gd" id="1_5jltv"]
+[ext_resource type="Script" uid="uid://b4srh60a5xyui" path="res://scripts/relic_data.gd" id="1_cwlaf"]
 
 [resource]
-script = ExtResource("1_5jltv")
+script = ExtResource("1_cwlaf")
 id = "R32"
-display_name = "結晶のひと泳ぎ"
+display_name = "渡りの星図"
 rarity = 2
-values = Dictionary[String, float]({
-"cost": 1.0,
-"steps": 2.0
-})
-description = "作戦中、アクアマリンを$cost$個消費するたび通常歩数+$steps$"
-note = "消費後は取り消せません。"
+description = "前サイクルの跨ぎ回数だけマーク数を増やす"

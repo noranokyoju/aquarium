@@ -1,9 +1,12 @@
-[gd_resource type="Resource" script_class="RelicData" format=3]
+[gd_resource type="Resource" script_class="RelicData" format=3 uid="uid://dg5ldvl3ft0qn"]
 
-[ext_resource type="Script" path="res://scripts/relic_data.gd" id="1_dhqb7"]
+[ext_resource type="Script" uid="uid://b4srh60a5xyui" path="res://scripts/relic_data.gd" id="1_lx57f"]
 
 [resource]
-script = ExtResource("1_dhqb7")
+script = ExtResource("1_lx57f")
 id = "R01"
-display_name = "ひとすじの潮"
-description = "全反時計回りリンクを無効化"
+display_name = "豊かな潮流"
+values = Dictionary[String, float]({
+"cross_weight": 8.0
+})
+description = "基礎値合計の小さいエリアから大きいエリアへ向かう跨ぎ重みを$cross_weight$にする"

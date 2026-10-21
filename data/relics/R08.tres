@@ -8,6 +8,7 @@ id = "R08"
 display_name = "あおい目印"
 values = Dictionary[String, float]({
 "aqua": 1.0,
+"chance": 30.0,
 "marks": 1.0
 })
-description = "マーク数+$marks$。共通マークを1回以上訪問すると追加アクアマリン$aqua$個。1サイクル最大$aqua$個"
+description = "マーク数+$marks$。共通マークを訪問するたび独立$chance$%で追加アクアマリン$aqua$個。発動回数の上限なし"

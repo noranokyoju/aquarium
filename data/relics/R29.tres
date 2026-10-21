@@ -1,13 +1,15 @@
-[gd_resource type="Resource" script_class="RelicData" format=3]
+[gd_resource type="Resource" script_class="RelicData" format=3 uid="uid://blgv28f46gn61"]
 
-[ext_resource type="Script" path="res://scripts/relic_data.gd" id="1_4lwpa"]
+[ext_resource type="Script" uid="uid://b4srh60a5xyui" path="res://scripts/relic_data.gd" id="1_dqdsl"]
 
 [resource]
-script = ExtResource("1_4lwpa")
+script = ExtResource("1_dqdsl")
 id = "R29"
-display_name = "ねむりの星印"
+display_name = "ひといろの夢"
 rarity = 1
 values = Dictionary[String, float]({
+"cross_weight": 1.0,
+"global_mult": 1.0,
 "marks": 1.0
 })
-description = "マーク数+$marks$。全共通マークの抽選でゆったりを優先"
+description = "マーク数+$marks$。マークされたゆったりからはしゃぎへ向かう跨ぎ重みを$cross_weight$にする。開始地がゆったりで、1歩以上訪問し全訪問先がゆったりなら全体倍率+$global_mult:1$"
