@@ -5,8 +5,9 @@ func _ready() -> void:
 	var main = load("res://main.tscn").instantiate()
 	add_child(main)
 	await get_tree().process_frame
+	Game.mark_tut("done")
+	Game.mark_tut("mark")
 	main._start_new()
-	main._game._tut_queue.clear()
 	Game.state["relics"] = ["R33", "R02"]
 	Game.state["A"] = 10
 	main._game._on_roll()

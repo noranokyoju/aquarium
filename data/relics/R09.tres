@@ -8,6 +8,6 @@ id = "R09"
 display_name = "潮の鉱脈"
 values = Dictionary[String, float]({
 "aqua": 1.0,
-"chance": 50.0
+"chance": 30.0
 })
 description = "跨ぎ移動ごとに独立$chance$%で追加アクアマリン$aqua$個。発動回数の上限なし"

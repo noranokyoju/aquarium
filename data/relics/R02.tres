@@ -7,6 +7,6 @@ script = ExtResource("1_rhs3i")
 id = "R02"
 display_name = "とどまる泡"
 values = Dictionary[String, float]({
-"weight": 6.0
+"weight": 8.0
 })
 description = "全ノードに重み$weight$の自己ループを追加"

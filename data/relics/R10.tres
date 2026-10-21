@@ -7,6 +7,6 @@ script = ExtResource("1_pstrq")
 id = "R10"
 display_name = "しずかな真珠"
 values = Dictionary[String, float]({
-"aqua": 1.0
+"aqua": 2.0
 })
 description = "開始地がゆったりで、1歩以上訪問し全訪問先がゆったりなら追加アクアマリン$aqua$個"

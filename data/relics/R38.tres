@@ -8,8 +8,8 @@ id = "R38"
 display_name = "星だけの世界"
 rarity = 2
 values = Dictionary[String, float]({
-"mark_bonus": 3.0,
+"mark_bonus": 2.0,
 "marks": 2.0
 })
 description = "マーク数+$marks$。共通マークの訪問倍率加算を+0.5から+$mark_bonus:1$へ置換"
-note = "未マーク地点への訪問の報酬0"
+note = "【注意】未マーク地点への訪問の報酬0"

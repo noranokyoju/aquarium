@@ -12,4 +12,4 @@ values = Dictionary[String, float]({
 "max_steps": 3.0
 })
 description = "全体倍率+$global_mult:1$"
-note = "$max_steps+1$歩以上移動できない"
+note = "【注意】$max_steps+1$歩以上移動できない"

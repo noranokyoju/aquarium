@@ -1,14 +1,14 @@
-[gd_resource type="Resource" script_class="RelicData" format=3]
+[gd_resource type="Resource" script_class="RelicData" format=3 uid="uid://cwsnlc56l4rhc"]
 
-[ext_resource type="Script" path="res://scripts/relic_data.gd" id="1_dqdsl"]
+[ext_resource type="Script" uid="uid://b4srh60a5xyui" path="res://scripts/relic_data.gd" id="1_rtkyp"]
 
 [resource]
-script = ExtResource("1_dqdsl")
+script = ExtResource("1_rtkyp")
 id = "R27"
-display_name = "ひといろの夢"
+display_name = "星をたどるひれ"
 rarity = 1
 values = Dictionary[String, float]({
-"bonus": 0.75
+"steps": 2.0
 })
-description = "開始地がゆったりで、一度もそのエリアを離れていない間、訪問倍率+$bonus$"
-note = "一度離れると戻っても復活しません。"
+description = "作戦中、ランダムな共通マーク1つを消すたび通常歩数+$steps$。マークがなくなるまで何回でも使える。これ自身はマークを追加しない"
+note = "消したマークは戻せません。"

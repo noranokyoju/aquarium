@@ -8,6 +8,6 @@ id = "R24"
 display_name = "ねむりの庭"
 rarity = 1
 values = Dictionary[String, float]({
-"growth": 3.0
+"growth": 4.0
 })
 description = "開始地がゆったりで、1歩以上訪問し全訪問先がゆったりなら、精算後にゆったり全5ポーズの基礎値+$growth$"

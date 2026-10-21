@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="RelicData" format=3]
+[gd_resource type="Resource" script_class="RelicData" format=3 uid="uid://5ydckhrprffy"]
 
-[ext_resource type="Script" path="res://scripts/relic_data.gd" id="1_c6qxe"]
+[ext_resource type="Script" uid="uid://b4srh60a5xyui" path="res://scripts/relic_data.gd" id="1_c6qxe"]
 
 [resource]
 script = ExtResource("1_c6qxe")

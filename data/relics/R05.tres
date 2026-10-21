@@ -1,12 +1,12 @@
-[gd_resource type="Resource" script_class="RelicData" format=3 uid="uid://bl8iaumgkcu5i"]
+[gd_resource type="Resource" script_class="RelicData" format=3 uid="uid://ddfw2kihcfsyt"]
 
-[ext_resource type="Script" uid="uid://b4srh60a5xyui" path="res://scripts/relic_data.gd" id="1_2e70w"]
+[ext_resource type="Script" uid="uid://b4srh60a5xyui" path="res://scripts/relic_data.gd" id="1_4lwpa"]
 
 [resource]
-script = ExtResource("1_2e70w")
+script = ExtResource("1_4lwpa")
 id = "R05"
-display_name = "ながいしっぽ"
+display_name = "ねむりの星印"
 values = Dictionary[String, float]({
-"steps": 1.0
+"marks": 1.0
 })
-description = "毎サイクル通常歩数+$steps$"
+description = "マーク数+$marks$。全共通マークの抽選でゆったりを優先"

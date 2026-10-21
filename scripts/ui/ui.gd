@@ -212,7 +212,7 @@ static func relic_text(id: String) -> String:
 	var note := D.relic_note(id)
 	if note != "":
 		s += "\n[color=%s]%s[/color]" % [hexc(C_GOLD if note.begins_with("【") else C_SUB), note]
-	if ["R08", "R15", "R35", "R21", "R29", "R30", "R36", "R38"].has(id):
+	if ["R06", "R08", "R15", "R21", "R29", "R05", "R32", "R27", "R36", "R38"].has(id):
 		s += "\n[color=%s]共通マーク：各訪問で訪問倍率+0.5（R38所持時は+%.1fに置換）[/color]" % [hexc(C_SUB), D.relic_value("R38", "mark_bonus")]
 	return s
 

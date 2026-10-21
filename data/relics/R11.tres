@@ -1,12 +1,12 @@
-[gd_resource type="Resource" script_class="RelicData" format=3]
+[gd_resource type="Resource" script_class="RelicData" format=3 uid="uid://cgy5r1riib503"]
 
-[ext_resource type="Script" path="res://scripts/relic_data.gd" id="1_4f3oh"]
+[ext_resource type="Script" uid="uid://b4srh60a5xyui" path="res://scripts/relic_data.gd" id="1_4f3oh"]
 
 [resource]
 script = ExtResource("1_4f3oh")
 id = "R11"
 display_name = "ぴたりのしるし"
 values = Dictionary[String, float]({
-"hit_mult": 2.0
+"hit_mult": 1.0
 })
 description = "的中倍率+$hit_mult:1$"

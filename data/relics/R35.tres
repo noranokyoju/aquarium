@@ -1,13 +1,10 @@
-[gd_resource type="Resource" script_class="RelicData" format=3 uid="uid://cwsnlc56l4rhc"]
+[gd_resource type="Resource" script_class="RelicData" format=3 uid="uid://bl8iaumgkcu5i"]
 
-[ext_resource type="Script" uid="uid://b4srh60a5xyui" path="res://scripts/relic_data.gd" id="1_rtkyp"]
+[ext_resource type="Script" uid="uid://b4srh60a5xyui" path="res://scripts/relic_data.gd" id="1_2e70w"]
 
 [resource]
-script = ExtResource("1_rtkyp")
+script = ExtResource("1_2e70w")
 id = "R35"
-display_name = "星をたどるひれ"
+display_name = "ながいしっぽ"
 rarity = 2
-values = Dictionary[String, float]({
-"marks": 1.0
-})
-description = "マーク数+$marks$。前サイクルに訪問した異なる共通マーク数だけ通常歩数を増やす"
+description = "前サイクルで最も多く訪問したポーズの訪問回数だけ、通常歩数を増やす"

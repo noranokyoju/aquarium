@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="RelicData" format=3]
+[gd_resource type="Resource" script_class="RelicData" format=3 uid="uid://bw54ofv30db0i"]
 
-[ext_resource type="Script" path="res://scripts/relic_data.gd" id="1_p85do"]
+[ext_resource type="Script" uid="uid://b4srh60a5xyui" path="res://scripts/relic_data.gd" id="1_p85do"]
 
 [resource]
 script = ExtResource("1_p85do")
@@ -9,4 +9,4 @@ display_name = "ふたつの星印"
 values = Dictionary[String, float]({
 "marks": 2.0
 })
-description = "マーク数+$marks$"
+description = "的中時、次のサイクルのマーク数+$marks$"
